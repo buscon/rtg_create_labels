@@ -1,0 +1,37 @@
+# Web server settings for the study folder (Apache, as used by netcup web hosting).
+
+DirectoryIndex index.html
+Options -Indexes
+
+# Never expose version-control folders, even if a clone ends up in the web folder.
+RedirectMatch 404 /\.git
+
+# Never serve configuration, database, password hash or source files.
+<FilesMatch "\.(ini|sqlite|sqlite-wal|sqlite-shm|hash|sql|md|py|csv|log)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+  <IfModule !mod_authz_core.c>
+    Order deny,allow
+    Deny from all
+  </IfModule>
+</FilesMatch>
+
+# The headphone-check answer key must not be downloadable.
+# (manifest.csv is covered by the rule above.)
+
+# File types needed by the in-browser model.
+AddType application/wasm .wasm
+AddType text/javascript .mjs
+AddType application/octet-stream .onnx
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  <FilesMatch "\.(onnx|wasm|mjs)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+  <FilesMatch "\.(html|js|css)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

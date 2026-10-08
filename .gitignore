@@ -1,0 +1,21 @@
+# Data and secrets - never commit
+public/private/db/
+public/private/dumps/
+public/private/db_credentials.ini
+/data/
+public/private/interviewer_token.hash
+public/private_path.php
+export/
+
+# Audio and downloaded assets (created by scripts/, uploaded separately)
+public/audio/*
+!public/audio/README.md
+public/models/
+public/static/vendor/
+
+# System and tool files
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+node_modules/
