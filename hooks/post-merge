@@ -1,0 +1,16 @@
+#!/bin/sh
+# Git hook: runs automatically after every "git pull" that brings in new commits
+# (not when the pull reports "Already up to date").
+# It copies public/ to the web folder by calling deploy.sh (without pulling again).
+#
+# Activated once on the server, in the clone:
+#     git config core.hooksPath hooks
+#     git config rgt.webdir "$HOME/marcellolussana.net/httpdocs/rgt"
+# On your own computer, do NOT activate it (no web folder there).
+
+WEB="$(git config --get rgt.webdir)"
+if [ -z "$WEB" ]; then
+  echo "rgt: git config rgt.webdir is not set, website not deployed" >&2
+  exit 0
+fi
+exec bash "$(git rev-parse --show-toplevel)/deploy.sh" "$WEB" --no-pull

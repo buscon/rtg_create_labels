@@ -27,7 +27,7 @@ public/                     web folder: the only part reachable from the interne
   static/vendor/            transformers.js + ONNX runtime          (downloaded, not in git)
   models/                   embedding model                           (downloaded, not in git)
   audio/                    study clips, practice clips, headphone/   (not in git)
-private/                    NOT reachable from the internet; on the server outside the web folder
+private/                    NOT reachable from the internet; on the server used directly from the git clone
   config.ini                ALL adjustable parameters
   data/elements.csv         the 10 clips (file name, category)
   data/triad_set.csv        the 17 triads covering all clip pairs
@@ -39,10 +39,11 @@ private/                    NOT reachable from the internet; on the server outsi
   db/, dumps/               SQLite file (local testing) and dumps     (not in git)
 scripts/                    Python tools for the researcher
 tests/                      automated tests of the API
-deploy.sh                   copies public/ and private/ from the server clone to their folders (see INSTALL.md)
+deploy.sh                   copies public/ from the server clone to the web folder (see INSTALL.md)
+hooks/post-merge            git hook on the server: runs deploy.sh after every git pull
 ```
 
-`api.php` finds the private folder through `public/private_path.php`, which `deploy.sh` writes on the server. Without that file (local testing), it uses `../private` next to `public/`.
+`api.php` finds the private folder through `public/private_path.php`, which `deploy.sh` writes on the server (pointing to `private/` in the clone). Without that file (local testing), it uses `../private` next to `public/`.
 
 ## Changing parameters
 
@@ -67,11 +68,11 @@ Interviewer mode: `http://127.0.0.1:8000/?mode=interviewer`. English: add `?lang
 
 Run the tests: `pytest tests/` (SQLite). To test against MySQL/MariaDB as well, set `RGT_TEST_MYSQL=host:port:user:password:dbname` (a test database; it is emptied). Tested with MySQL 8.0 and MariaDB 10.11.
 
-Deployment to netcup (git clone on the server + `deploy.sh`): see [INSTALL.md](INSTALL.md).
+Deployment to netcup (git clone on the server; `git pull` deploys automatically through a git hook): see [INSTALL.md](INSTALL.md).
 
 ## Data
 
-1. On the server: `php ~/rgt_private/backup.php` writes a CSV dump of all tables to `~/rgt_private/dumps/`.
+1. On the server: `php ~/rtg_create_labels/private/backup.php` writes a CSV dump of all tables to `private/dumps/` in the clone.
 2. Download the dump folder (SFTP) and convert it: `python scripts/import_dump.py path/to/dump-… --out data/rgt.sqlite`
 3. `python scripts/export.py --db data/rgt.sqlite --out export/` writes analysis tables and one text file per participant with their constructs.
 4. `python scripts/simulate_stopping.py --db data/rgt.sqlite --threshold 0.80` re-runs the stopping rule with other values (design file 12).
