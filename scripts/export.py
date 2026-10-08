@@ -55,7 +55,7 @@ def dump(con: sqlite3.Connection, sql: str, path: Path) -> int:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=None, help="default: public/private/config.ini")
+    ap.add_argument("--config", default=None, help="default: private/config.ini")
     ap.add_argument("--db", default=None, help="SQLite file, e.g. made by import_dump.py (default: db_path from config)")
     ap.add_argument("--out", default="export")
     args = ap.parse_args()

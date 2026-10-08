@@ -1,8 +1,10 @@
 <?php
 // Set-up and check script. Run on the server via SSH:
-//     php private/setup.php               check requirements, validate config, create/update the database
-//     php private/setup.php --set-token   additionally create a new interviewer password
-//     php /path/to/private/setup.php --public-dir /path/to/httpdocs/rgt   (private folder outside the web folder)
+//     php /path/to/private/setup.php --public-dir /path/to/httpdocs/rgt
+//         check requirements, validate config, create/update the database tables
+//     ... --set-token   additionally create a new interviewer password
+// deploy.sh runs this automatically. Without --public-dir, the public/ folder
+// next to this folder is checked (repository layout, local testing).
 //
 // The script can also be run locally with the PHP command line.
 
@@ -14,8 +16,7 @@ if (PHP_SAPI !== 'cli') {
 }
 
 $privateDir = __DIR__;
-$publicDir = dirname(__DIR__);
-// When the private folder is outside the web folder, pass the web folder: --public-dir /path/to/httpdocs/rgt
+$publicDir = dirname(__DIR__) . '/public';
 $i = array_search('--public-dir', $argv, true);
 if ($i !== false && isset($argv[$i + 1])) $publicDir = rtrim($argv[$i + 1], '/');
 $ok = true;
@@ -52,8 +53,9 @@ if ($cfg['triads']['practice_triad']) foreach ($cfg['stimuli']['practice_clips']
 if ($missing) { line('WARN', 'audio files missing in audio/: ' . implode(', ', $missing)); }
 else line('ok', 'all clips found in audio/');
 if ($cfg['headphone_check']['enabled']) {
-    if (is_file("$audio/headphone/manifest.csv")) line('ok', 'headphone-check stimuli found');
-    else line('WARN', 'audio/headphone/manifest.csv missing (run scripts/make_headphone_stimuli.py and upload)');
+    if (is_file("$privateDir/headphone_manifest.csv")) line('ok', 'headphone-check answer key found');
+    else line('WARN', 'private/headphone_manifest.csv missing (run scripts/make_headphone_stimuli.py and upload it '
+        . 'to the private folder, the sound files to audio/headphone/)');
 }
 if ($cfg['similarity']['backend'] === 'embedding') {
     $model = $publicDir . '/models/' . $cfg['similarity']['embedding_model'];
@@ -81,7 +83,7 @@ try {
     } else {
         $cr = parse_ini_file(rgt_path($cfg, $cfg['server']['db_credentials']), false, INI_SCANNER_RAW);
         @chmod(rgt_path($cfg, $cfg['server']['db_credentials']), 0600);
-        line('ok', "database ready: MariaDB/MySQL database '{$cr['dbname']}' on {$cr['host']}");
+        line('ok', "database ready: MySQL database '{$cr['dbname']}' on {$cr['host']}");
     }
 } catch (Throwable $e) {
     line('FAIL', 'database: ' . $e->getMessage());
@@ -100,6 +102,11 @@ if (in_array('--set-token', $argv, true)) {
     line('note', 'no interviewer password yet (php private/setup.php --set-token)');
 }
 
-// 6. web protection of this folder
-if (!is_file($privateDir . '/.htaccess')) line('WARN', 'private/.htaccess missing: config and database could be downloadable');
-echo PHP_EOL . "Check in the browser that <your-url>/private/config.ini returns 403 Forbidden.\n";
+// 6. the private folder must not be inside the web folder
+$realPriv = realpath($privateDir) ?: $privateDir;
+$realPub = realpath($publicDir) ?: $publicDir;
+if (str_starts_with($realPriv . '/', $realPub . '/')) {
+    line('WARN', 'the private folder is inside the web folder; it is then protected only by .htaccess');
+} else {
+    line('ok', 'private folder is outside the web folder');
+}

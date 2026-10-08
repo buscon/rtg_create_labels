@@ -4,7 +4,7 @@
     python scripts/make_placeholder_audio.py && python scripts/make_headphone_stimuli.py
     pytest tests/
 
-Each run uses a temporary copy of public/ with its own database. The tests run
+Each run uses a temporary copy of public/ and private/ with its own database. The tests run
 with SQLite, and additionally with MariaDB/MySQL if the environment variable
 RGT_TEST_MYSQL is set to  host:port:user:password:dbname  (the database is
 emptied before the tests; use a test database only).
@@ -46,10 +46,12 @@ DRIVERS = ["sqlite"] + (["mysql"] if os.environ.get("RGT_TEST_MYSQL") else [])
 @pytest.fixture(scope="module", params=DRIVERS)
 def server(request, tmp_path_factory):
     driver = request.param
-    root = tmp_path_factory.mktemp("site") / "public"
-    shutil.copytree(REPO / "public", root,
-                    ignore=shutil.ignore_patterns("db", "dumps", "models", "vendor", "interviewer_token.hash",
-                                                  "db_credentials.ini"))
+    site = tmp_path_factory.mktemp("site")
+    ignore = shutil.ignore_patterns("db", "dumps", "models", "vendor", "interviewer_token.hash",
+                                    "db_credentials.ini", "private_path.php")
+    shutil.copytree(REPO / "public", site / "public", ignore=ignore)
+    shutil.copytree(REPO / "private", site / "private", ignore=ignore)
+    root = site                                       # contains public/ and private/
     ini = root / "private" / "config.ini"
     set_ini(ini, "similarity", "backend", '"embedding"')
     set_ini(ini, "server", "db_driver", f'"{driver}"')
@@ -69,7 +71,7 @@ def server(request, tmp_path_factory):
                          capture_output=True, text=True, check=True).stdout
     token = re.search(r"new interviewer password: (\S+)", out).group(1)
     port = free_port()
-    proc = subprocess.Popen(["php", "-S", f"127.0.0.1:{port}", "-t", str(root)],
+    proc = subprocess.Popen(["php", "-S", f"127.0.0.1:{port}", "-t", str(root / "public")],
                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     base = f"http://127.0.0.1:{port}/"
     for _ in range(50):
@@ -78,7 +80,7 @@ def server(request, tmp_path_factory):
             break
         except requests.ConnectionError:
             time.sleep(0.1)
-    with open(root / "audio" / "headphone" / "manifest.csv", encoding="utf-8") as f:
+    with open(root / "private" / "headphone_manifest.csv", encoding="utf-8") as f:
         answers = {r["filename"]: int(r["target"]) for r in csv.DictReader(f)}
     yield {"base": base, "token": token, "root": root, "hp_answers": answers, "driver": driver, "mysql": mysql}
     proc.terminate()

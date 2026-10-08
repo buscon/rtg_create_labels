@@ -8,6 +8,9 @@ Over headphones this produces a faint tone (Huggins pitch); over loudspeakers
 the effect largely disappears. Each stimulus has three noise intervals, one of
 which contains the Huggins pitch. The participant indicates which one.
 
+Output: the sound files go to public/audio/headphone/ (random names), the
+answer key to private/headphone_manifest.csv.
+
 PARAMETERS ARE APPROXIMATIONS. Check centre frequency, bandwidth, interval
 duration and level against Milne et al. (2021) before using this in the study,
 or use the stimuli published with that paper.
@@ -68,7 +71,7 @@ def write_stereo(path: Path, data: np.ndarray) -> None:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=None, help="default: public/private/config.ini")
+    ap.add_argument("--config", default=None, help="default: private/config.ini")
     ap.add_argument("--variants", type=int, default=3, help="different noise samples per target position")
     args = ap.parse_args()
     cfg = load_config(args.config)
@@ -89,11 +92,16 @@ def main() -> None:
             name = f"hp_{secrets.token_hex(4)}.wav"   # random, unseeded: must not reveal the answer
             write_stereo(out / name, np.concatenate(parts))
             rows.append({"filename": name, "target": target})
-    with open(out / "manifest.csv", "w", newline="", encoding="utf-8") as f:
+    old_manifest = out / "manifest.csv"           # earlier versions kept the key in the web folder
+    if old_manifest.exists():
+        old_manifest.unlink()
+    key = cfg.private_dir / "headphone_manifest.csv"   # answer key: private folder, never public
+    with open(key, "w", newline="", encoding="utf-8") as f:
         w = csv.DictWriter(f, fieldnames=["filename", "target"])
         w.writeheader()
         w.writerows(rows)
     print(f"{len(rows)} stimuli written to {out}")
+    print(f"answer key written to {key} (upload it to the private folder on the server)")
 
 
 if __name__ == "__main__":

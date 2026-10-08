@@ -1,9 +1,10 @@
 # Data and secrets - never commit
-public/private/db/
-public/private/dumps/
-public/private/db_credentials.ini
+private/db/
+private/dumps/
+private/db_credentials.ini
+private/headphone_manifest.csv
 /data/
-public/private/interviewer_token.hash
+private/interviewer_token.hash
 public/private_path.php
 export/
 

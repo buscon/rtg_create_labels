@@ -29,7 +29,7 @@ from rgtconf import stop_reason  # noqa: E402
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=None, help="default: public/private/config.ini")
+    ap.add_argument("--config", default=None, help="default: private/config.ini")
     ap.add_argument("--db", default=None, help="SQLite file, e.g. made by import_dump.py (default: db_path from config)")
     ap.add_argument("--threshold", type=float, help="embedding threshold (default from config)")
     ap.add_argument("--threshold-text", type=float, help="text threshold (default from config)")

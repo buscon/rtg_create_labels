@@ -4,11 +4,11 @@
 
 declare(strict_types=1);
 
-// Location of the private folder (configuration, database, code).
-// Default: the "private" folder next to this file, protected by .htaccess.
-// To keep it outside the web root, create private_path.php next to this file:
-//     <?php return '/absolute/path/to/private';
-$privateDir = is_file(__DIR__ . '/private_path.php') ? require __DIR__ . '/private_path.php' : __DIR__ . '/private';
+// Location of the private folder (configuration, database access, code).
+// It is NOT inside the web folder:
+//   - on the server, deploy.sh writes its path into private_path.php (not in git);
+//   - in the repository (local testing), it is ../private next to public/.
+$privateDir = is_file(__DIR__ . '/private_path.php') ? require __DIR__ . '/private_path.php' : dirname(__DIR__) . '/private';
 
 require $privateDir . '/lib/config.php';
 require $privateDir . '/lib/core.php';
@@ -190,8 +190,9 @@ case 'POST session':
 
         $hpSeq = null; $hpOut = [];
         if ($cfg['headphone_check']['enabled']) {
-            $manifest = __DIR__ . '/audio/headphone/manifest.csv';
-            if (!is_file($manifest)) throw new RuntimeException('headphone stimuli missing (audio/headphone/manifest.csv)');
+            // the answer key is kept in the private folder; only the sound files are public
+            $manifest = $cfg['_private_dir'] . '/headphone_manifest.csv';
+            if (!is_file($manifest)) throw new RuntimeException('headphone answer key missing (private/headphone_manifest.csv)');
             $stimuli = rgt_read_csv($manifest);
             $hpSeq = [];
             for ($i = 0; $i < $cfg['headphone_check']['n_trials']; $i++) {

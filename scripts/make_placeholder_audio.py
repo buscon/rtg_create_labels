@@ -51,7 +51,7 @@ def placeholder(seed: int, seconds: float) -> np.ndarray:
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--config", default=None, help="default: public/private/config.ini")
+    ap.add_argument("--config", default=None, help="default: private/config.ini")
     ap.add_argument("--seconds", type=float, default=None, help="default: clip_duration_s from config")
     args = ap.parse_args()
     cfg = load_config(args.config)

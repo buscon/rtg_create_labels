@@ -1,6 +1,6 @@
 """Shared helpers for the Python scripts: read config.ini and apply the stopping rule.
 
-The web application itself is written in PHP (public/). These scripts run on
+The web application itself is written in PHP (public/ and private/). These scripts run on
 the researcher's computer: preparing audio, downloading assets, exporting and
 analysing data.
 """
@@ -12,7 +12,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 PUBLIC = REPO / "public"
-PRIVATE = PUBLIC / "private"
+PRIVATE = REPO / "private"
 DEFAULT_CONFIG = PRIVATE / "config.ini"
 LIST_KEYS = {("study", "languages"), ("stimuli", "practice_clips"),
              ("interviewer", "followup_de"), ("interviewer", "followup_en")}
@@ -46,7 +46,7 @@ class Config(dict):
 
     @property
     def public_dir(self) -> Path:
-        return self.private_dir.parent
+        return PUBLIC
 
 
 def load_config(path: str | Path | None = None) -> Config:
@@ -77,7 +77,7 @@ def db_path(cfg: Config) -> Path:
     return cfg.path(cfg["server"]["db_path"])
 
 
-# --- stopping rule: same logic as stop_reason() in public/private/lib/core.php
+# --- stopping rule: same logic as stop_reason() in private/lib/core.php
 
 def trailing_not_new(history: list[bool]) -> int:
     n = 0

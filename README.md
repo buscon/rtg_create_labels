@@ -21,42 +21,45 @@ Session flow: consent → short questions → volume setting → headphone check
 ## Folder structure
 
 ```
-public/                     everything that is uploaded to the web hosting (→ marcellolussana.net/rgt)
+public/                     web folder: the only part reachable from the internet (→ marcellolussana.net/rgt)
   index.html, api.php, .htaccess
   static/                   app.js, i18n.js (all interface texts), embedder.js, style.css
-  static/vendor/            transformers.js + ONNX runtime        (downloaded, not in git)
-  models/                   embedding model                         (downloaded, not in git)
-  audio/                    study clips, practice clips, headphone/  (not in git)
-  private/                  blocked from the web by .htaccess
-    config.ini              ALL adjustable parameters
-    data/elements.csv       the 10 clips (file name, category)
-    data/triad_set.csv      the 17 triads covering all clip pairs
-    db_credentials.example.ini  template for the database access data (copy to db_credentials.ini, not in git)
-    schema.mysql.sql, schema.sqlite.sql, lib/   database schema and PHP code
-    setup.php               check + create tables + interviewer password
-    backup.php              CSV dump of all tables (backup and data download)
-    db/, dumps/             SQLite file (local testing) and dumps   (not in git)
+  static/vendor/            transformers.js + ONNX runtime          (downloaded, not in git)
+  models/                   embedding model                           (downloaded, not in git)
+  audio/                    study clips, practice clips, headphone/   (not in git)
+private/                    NOT reachable from the internet; on the server outside the web folder
+  config.ini                ALL adjustable parameters
+  data/elements.csv         the 10 clips (file name, category)
+  data/triad_set.csv        the 17 triads covering all clip pairs
+  db_credentials.example.ini  template for the database access data (copy to db_credentials.ini, not in git)
+  headphone_manifest.csv    answer key of the headphone check        (generated, not in git)
+  schema.mysql.sql, schema.sqlite.sql, lib/   database schema and PHP code
+  setup.php                 check + create tables + interviewer password
+  backup.php                CSV dump of all tables (backup and data download)
+  db/, dumps/               SQLite file (local testing) and dumps     (not in git)
 scripts/                    Python tools for the researcher
 tests/                      automated tests of the API
-deploy.sh                   copies public/ from the server clone to the web folder (see INSTALL.md)
+deploy.sh                   copies public/ and private/ from the server clone to their folders (see INSTALL.md)
 ```
+
+`api.php` finds the private folder through `public/private_path.php`, which `deploy.sh` writes on the server. Without that file (local testing), it uses `../private` next to `public/`.
 
 ## Changing parameters
 
-Edit `public/private/config.ini` (on the server, e.g. with the file manager or SFTP). Changes apply to the next session that starts; no restart is needed. Each session stores a copy of the configuration it used. Increase `config_version` whenever you change a value, and set it to `1.0` before real data collection starts.
+Edit `private/config.ini` in the repository, commit, push and deploy (see INSTALL.md). Changes apply to the next session that starts; no restart is needed. Each session stores a copy of the configuration it used. Increase `config_version` whenever you change a value, and set it to `1.0` before real data collection starts.
 
 Interface texts (consent, instructions, buttons) are in `public/static/i18n.js`. Texts marked `[PLACEHOLDER]` must be replaced with the approved study information.
 
 ## Quick start on your own computer
 
-Requirements: PHP 8.1+ with `pdo_sqlite` and `mbstring`, Python 3.10+. For local testing set `db_driver = "sqlite"` in `public/private/config.ini` (the default `"mysql"` is for the server).
+Requirements: PHP 8.1+ with `pdo_sqlite` and `mbstring`, Python 3.10+. For local testing set `db_driver = "sqlite"` in `private/config.ini` (do not commit this change) (the default `"mysql"` is for the server).
 
 ```bash
 pip install -r scripts/requirements.txt
 python scripts/make_placeholder_audio.py      # test sounds (replace with real clips later)
 python scripts/make_headphone_stimuli.py      # headphone-check stimuli
 python scripts/fetch_assets.py                # transformers.js + model (~160 MB)
-php public/private/setup.php --set-token      # database + interviewer password
+php private/setup.php --set-token             # database + interviewer password
 php -S 127.0.0.1:8000 -t public               # then open http://127.0.0.1:8000
 ```
 
@@ -68,7 +71,7 @@ Deployment to netcup (git clone on the server + `deploy.sh`): see [INSTALL.md](I
 
 ## Data
 
-1. On the server: `php private/backup.php` writes a CSV dump of all tables to `private/dumps/`.
+1. On the server: `php ~/rgt_private/backup.php` writes a CSV dump of all tables to `~/rgt_private/dumps/`.
 2. Download the dump folder (SFTP) and convert it: `python scripts/import_dump.py path/to/dump-… --out data/rgt.sqlite`
 3. `python scripts/export.py --db data/rgt.sqlite --out export/` writes analysis tables and one text file per participant with their constructs.
 4. `python scripts/simulate_stopping.py --db data/rgt.sqlite --threshold 0.80` re-runs the stopping rule with other values (design file 12).
