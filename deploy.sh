@@ -48,6 +48,10 @@ fi
 mkdir -p "$WEB"
 WEB="$(cd "$WEB" && pwd -P)"
 REPO="$(cd "$REPO" && pwd -P)"
+# collapse repeated slashes: with HOME="/" (netcup SSH), "$HOME/x" becomes "//x"
+squash() { local p="$1"; while [[ "$p" == *//* ]]; do p="${p//\/\//\/}"; done; printf '%s' "$p"; }
+WEB="$(squash "$WEB")"
+REPO="$(squash "$REPO")"
 
 inside() { case "$1/" in "$2/"*) return 0;; esac; return 1; }
 
@@ -55,6 +59,7 @@ inside() { case "$1/" in "$2/"*) return 0;; esac; return 1; }
 # plain bash, because "realpath --relative-to" is not available everywhere
 relpath() {
   local from="$1" to="$2" up=""
+  [[ "$from" == "/" ]] && from=""
   while [[ -n "$from" && "$to" != "$from" && "$to" != "$from"/* ]]; do
     from="${from%/*}"
     up="../$up"
