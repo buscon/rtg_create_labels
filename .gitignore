@@ -7,6 +7,7 @@ private/headphone_manifest.csv
 private/interviewer_token.hash
 private/access_codes.csv
 private/ip_salt.key
+private/web_dir.txt
 public/private_path.php
 export/
 

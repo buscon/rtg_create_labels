@@ -102,6 +102,9 @@ else
     "${PRIV//\'/\\\'}" > "$WEB/private_path.php"
 fi
 
+# remember the web folder, so that "php private/setup.php" checks it without --public-dir
+printf '%s\n' "$WEB" > "$PRIV/web_dir.txt"
+
 echo "deployed commit $COMMIT"
 echo "  web folder:     $WEB"
 echo "  private folder: $PRIV"

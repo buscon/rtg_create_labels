@@ -7,8 +7,9 @@
 //     ... --list-codes  show the group codes and how often each was used
 //     ... --reset-data  delete all sessions and answers (test data), e.g. before a new clip set;
 //                       asks for confirmation; make a backup first (php private/backup.php)
-// deploy.sh runs this automatically. Without --public-dir, the public/ folder
-// next to this folder is checked (repository layout, local testing).
+// deploy.sh runs this automatically. Without --public-dir, the web folder of the
+// last deploy (private/web_dir.txt) is checked, or else the public/ folder next
+// to this folder (repository layout, local testing).
 //
 // The script can also be run locally with the PHP command line.
 
@@ -21,6 +22,8 @@ if (PHP_SAPI !== 'cli') {
 
 $privateDir = __DIR__;
 $publicDir = dirname(__DIR__) . '/public';
+// deploy.sh remembers the web folder of the server in web_dir.txt (not in git)
+if (is_file(__DIR__ . '/web_dir.txt') && is_dir($d = trim((string)file_get_contents(__DIR__ . '/web_dir.txt')))) $publicDir = $d;
 $i = array_search('--public-dir', $argv, true);
 if ($i !== false && isset($argv[$i + 1])) $publicDir = rtrim($argv[$i + 1], '/');
 $ok = true;
@@ -50,6 +53,7 @@ try {
 }
 
 // 3. audio files
+line('ok', "web folder checked: $publicDir");
 $audio = $publicDir . '/audio';
 $missing = [];
 foreach (rgt_elements($cfg) as $e) if (!is_file("$audio/{$e['filename']}")) $missing[] = $e['filename'];
