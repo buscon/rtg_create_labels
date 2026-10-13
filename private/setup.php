@@ -4,6 +4,7 @@
 //         check requirements, validate config, create/update the database tables
 //     ... --set-token   additionally create a new interviewer password
 //     ... --add-code "NOTE" MAX_USES [VALID_UNTIL]   create a group code for an invitation link
+//     ... --set-code CODE MAX_USES [VALID_UNTIL|-]  change a code (MAX_USES 0 = unlimited)
 //     ... --list-codes  show the group codes and how often each was used
 //     ... --reset-data  delete all sessions and answers (test data), e.g. before a new clip set;
 //                       asks for confirmation; make a backup first (php private/backup.php)
@@ -114,13 +115,41 @@ try {
 
 // 5. group codes for the invitation links (design file 14)
 $codesFile = rgt_path($cfg, $cfg['access']['codes_file']);
+$i = array_search('--set-code', $argv, true);
+if ($i !== false) {
+    // change the maximum (0 = unlimited) and optionally the end date ("-" removes it) of an existing code
+    $want = rgt_normalise_code($argv[$i + 1] ?? '');
+    $maxArg = $argv[$i + 2] ?? '';
+    $until = $argv[$i + 3] ?? null;
+    if ($want === '' || !preg_match('/^\d+$/', $maxArg) || ($until !== null && $until !== '-' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until))) {
+        line('FAIL', 'usage: --set-code CODE MAX_USES [VALID_UNTIL as YYYY-MM-DD, or - for none]   (MAX_USES 0 = unlimited)');
+        exit(1);
+    }
+    $rows = is_file($codesFile) ? rgt_read_csv($codesFile) : [];
+    $found = false;
+    foreach ($rows as &$r) {
+        if (rgt_normalise_code((string)$r['code']) === $want) {
+            $r['max_uses'] = (int)$maxArg;
+            if ($until !== null) $r['valid_until'] = $until === '-' ? '' : $until;
+            $found = true;
+        }
+    }
+    unset($r);
+    if (!$found) { line('FAIL', "code $want not found"); exit(1); }
+    $h = fopen($codesFile, 'w');
+    fputcsv($h, ['code', 'max_uses', 'valid_until', 'note'], ',', '"', '');
+    foreach ($rows as $r) fputcsv($h, [$r['code'], $r['max_uses'], $r['valid_until'] ?? '', $r['note'] ?? ''], ',', '"', '');
+    fclose($h);
+    line('ok', "code $want changed");
+}
 $i = array_search('--add-code', $argv, true);
 if ($i !== false) {
     $note = $argv[$i + 1] ?? '';
-    $max = (int)($argv[$i + 2] ?? 0);
+    $maxArg = $argv[$i + 2] ?? '';
+    $max = (int)$maxArg;
     $until = $argv[$i + 3] ?? '';
-    if ($note === '' || $max < 1 || ($until !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until))) {
-        line('FAIL', 'usage: --add-code "NOTE" MAX_USES [VALID_UNTIL as YYYY-MM-DD]');
+    if ($note === '' || !preg_match('/^\d+$/', $maxArg) || ($until !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until))) {
+        line('FAIL', 'usage: --add-code "NOTE" MAX_USES [VALID_UNTIL as YYYY-MM-DD]   (MAX_USES 0 = unlimited)');
         exit(1);
     }
     $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I
@@ -135,7 +164,8 @@ if ($i !== false) {
     fclose($h);
     @chmod($codesFile, 0600);
     $pretty = substr($code, 0, 4) . '-' . substr($code, 4);
-    line('ok', "new code $pretty for \"$note\" (max. $max sessions" . ($until ? ", until $until" : '') . ')');
+    line('ok', "new code $pretty for \"$note\" (" . ($max > 0 ? "max. $max sessions" : 'unlimited sessions')
+        . ($until ? ", until $until" : '') . ')');
     $site = $cfg['access']['site_url'] ?: 'https://<your site>/rgt/';
     echo "        invitation link: " . rtrim($site, '/') . "/?c=$pretty\n";
 }
@@ -147,8 +177,8 @@ if ($cfg['access']['require_code']) {
         $uses = rgt_code_uses(rgt_db($cfg));
         foreach ($codes as $c => $r) {
             $u = $uses[$c] ?? ['n' => 0, 'done' => 0];
-            printf("        %s-%s  used %d of %d (finished %d)%s  %s\n", substr($c, 0, 4), substr($c, 4), $u['n'],
-                (int)$r['max_uses'], $u['done'], ($r['valid_until'] ?? '') !== '' ? ", until {$r['valid_until']}" : '', $r['note'] ?? '');
+            printf("        %s-%s  used %d of %s (finished %d)%s  %s\n", substr($c, 0, 4), substr($c, 4), $u['n'],
+                (int)$r['max_uses'] > 0 ? (string)(int)$r['max_uses'] : 'unlimited', $u['done'], ($r['valid_until'] ?? '') !== '' ? ", until {$r['valid_until']}" : '', $r['note'] ?? '');
         }
     }
 } else {

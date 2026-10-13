@@ -123,6 +123,7 @@ function switchLanguage(lang) {
   store.set("rgt_lang", lang);
   applyLanguage();
   relabel();
+  document.querySelectorAll("#credits-body p[data-lang]").forEach((p) => { p.hidden = p.dataset.lang !== S.lang; });
 }
 
 function isMobile() {
@@ -531,10 +532,26 @@ function showEnd() {
   store.del("rgt_pid");
   setProgress(null);
   render(`<div class="panel"><h1>${tx("end_title")}</h1><p>${tx("end_text")}</p>
-    <p class="muted" id="credits" hidden><a href="credits.html" target="_blank" rel="noopener">${tx("credits")}</a></p></div>`);
-  // credits for the recordings (CC BY), shown only after the task so they cannot bias the answers
-  fetch("credits.html", { method: "HEAD", cache: "no-store" })
-    .then((r) => { if (r.ok) document.getElementById("credits").hidden = false; })
+    <div id="credits" class="credits" hidden><h2>${tx("credits")}</h2><div id="credits-body"></div></div></div>`);
+  // credits for the recordings (CC BY), shown only after the task so they cannot bias the answers.
+  // credits.html has one paragraph in English and one in German, then the list of recordings.
+  fetch("credits.html", { cache: "no-store" })
+    .then((r) => (r.ok ? r.text() : Promise.reject()))
+    .then((html) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const paras = [...doc.querySelectorAll(".panel > p")];
+      const list = doc.querySelector(".panel ul");
+      const body = document.getElementById("credits-body");
+      paras.slice(0, 2).forEach((p, i) => {
+        const el = document.importNode(p, true);
+        el.dataset.lang = i === 0 ? "en" : "de";
+        el.hidden = el.dataset.lang !== S.lang;
+        body.appendChild(el);
+      });
+      if (list) body.appendChild(document.importNode(list, true));
+      body.querySelectorAll("a").forEach((a) => { a.target = "_blank"; a.rel = "noopener"; });
+      document.getElementById("credits").hidden = false;
+    })
     .catch(() => {});
 }
 

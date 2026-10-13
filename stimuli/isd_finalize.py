@@ -199,7 +199,9 @@ def main() -> None:
 published under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> licence.
 They were shortened, faded in and out and level-adjusted.</p>
 <p>Die Klänge dieser Studie sind 30-Sekunden-Ausschnitte aus Aufnahmen der International Soundscape Database
-(ISD v1.0), veröffentlicht unter der Lizenz CC BY 4.0. Sie wurden gekürzt, ein- und ausgeblendet und im Pegel angepasst.</p>
+(ISD v1.0; Mitchell, Oberman, Aletta, Erfanian, Kachlicka, Lionello, Kang et al.),
+<a href="https://doi.org/10.5281/zenodo.10672568">doi:10.5281/zenodo.10672568</a>,
+veröffentlicht unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de">Creative Commons Namensnennung 4.0</a>. Sie wurden gekürzt, ein- und ausgeblendet und im Pegel angepasst.</p>
 <ul>{items}</ul></div></main></html>
 """, encoding="utf-8")
     print(f"written: {len(out)} files to {audio}, private/data/elements.csv ({len(clips)} clips), "
