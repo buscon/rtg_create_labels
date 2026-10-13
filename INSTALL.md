@@ -62,6 +62,13 @@ These are not in git. Upload them with SFTP or the file manager:
 | clips and practice clips | `~/marcellolussana.net/httpdocs/rgt/audio/` | `python stimuli/isd_finalize.py` on your computer (written to `public/audio/*.flac`; file names as in `private/data/elements.csv` and `config.ini`) |
 | model and library (~160 MB) | `~/marcellolussana.net/httpdocs/rgt/models/` and `~/marcellolussana.net/httpdocs/rgt/static/vendor/` | `python scripts/fetch_assets.py` on your computer |
 
+Two scripts do most of this:
+
+- `bash scripts/upload_server_files.sh SSH_LOGIN` (on your computer) uploads the clips, the
+  headphone-check sounds and their answer key with `scp`.
+- `bash ~/rtg_create_labels/scripts/fetch_assets.sh` (on the server) downloads the model and the
+  library directly into the web folder, so the ~150 MB do not have to be uploaded.
+
 These files are ignored by git, so `git pull` never changes or deletes them. **Do not run `git clean -x` in the clone on the server**: it deletes ignored files, including the database access data and the backups.
 
 The headphone sounds and their answer key belong together: if you run `make_headphone_stimuli.py` again, upload both again.
