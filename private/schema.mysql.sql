@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS participants (
     config_snapshot    MEDIUMTEXT NOT NULL,
     clip_mapping       TEXT NOT NULL,
     user_agent         VARCHAR(500) NULL,
+    access_code        VARCHAR(50) NULL,           -- group code from the invitation link (design file 14)
     excluded           TINYINT NOT NULL DEFAULT 0,
     exclusion_reason   VARCHAR(500) NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -115,4 +116,11 @@ CREATE TABLE IF NOT EXISTS ratings (
     FOREIGN KEY (participant_id) REFERENCES participants(participant_id),
     FOREIGN KEY (construct_id) REFERENCES constructs(construct_id),
     FOREIGN KEY (element_id) REFERENCES elements(element_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Rate limit for new sessions (design file 14): salted IP hashes, kept for one hour only
+CREATE TABLE IF NOT EXISTS session_starts (
+    ip_hash      CHAR(64) NOT NULL,
+    started_unix INT NOT NULL,
+    KEY idx_session_starts (ip_hash, started_unix)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

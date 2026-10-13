@@ -55,6 +55,14 @@ def server(request, tmp_path_factory):
     ini = root / "private" / "config.ini"
     set_ini(ini, "similarity", "backend", '"embedding"')
     set_ini(ini, "server", "db_driver", f'"{driver}"')
+    # access protection (design file 14): one group code for all tests; the timing check and the
+    # IP limit are switched off here and tested separately
+    set_ini(ini, "access", "require_code", "true")
+    set_ini(ini, "access", "min_play_fraction", "0")
+    set_ini(ini, "access", "max_sessions_per_ip_hour", "0")
+    (root / "private" / "access_codes.csv").write_text(
+        "code,max_uses,valid_until,note\nTEST-CODE,100000,,tests\nFULL-CODE,1,,one use\n"
+        "OLD-CODE,10,2020-01-01,expired\n", encoding="utf-8")
     mysql = None
     if driver == "mysql":
         import pymysql
@@ -110,7 +118,7 @@ def call(server, route, method="GET", body=None, token=None, **query):
 
 
 def new_session(server, token=None, pass_headphones=True):
-    code, s = call(server, "session", "POST", {"language": "de"}, token=token)
+    code, s = call(server, "session", "POST", {"language": "de", "access_code": None if token else "test-code"}, token=token)
     assert code == 200, s
     pid = s["participant_id"]
     answers = [server["hp_answers"][t["url"].split("/")[-1]] for t in s["headphone_trials"]]
@@ -162,7 +170,7 @@ def test_config_hides_categories(server):
 
 
 def test_private_files_not_in_api(server):
-    code, s = call(server, "session", "POST", {"language": "de"})
+    code, s = call(server, "session", "POST", {"language": "de", "access_code": "TESTCODE"})
     assert "target" not in str(s)
     assert all(re.fullmatch(r"audio/headphone/hp_[0-9a-f]{8}\.wav", t["url"]) for t in s["headphone_trials"])
 
@@ -338,3 +346,80 @@ def test_setup_adds_missing_column_to_old_database(server):
                    check=True, capture_output=True)
     cols = [r[0] for r in query(server, "SHOW COLUMNS FROM responses")]
     assert "language" in cols
+
+
+# ---------------------------------------------------------------- access protection (design file 14)
+
+def test_access_code_required(server):
+    assert call(server, "access", c="")[1]["status"] == "missing"
+    assert call(server, "access", c="nope")[1]["status"] == "invalid"
+    assert call(server, "access", c="old-code")[1]["status"] == "expired"
+    assert call(server, "access", c="test code")[1]["status"] == "ok"        # case, spaces and dashes ignored
+    code, r = call(server, "session", "POST", {"language": "de"})
+    assert code == 403 and r["detail"] == "access_code_missing"
+    code, r = call(server, "session", "POST", {"language": "de", "access_code": "OLD-CODE"})
+    assert code == 403 and r["detail"] == "access_code_expired"
+
+
+def test_access_code_max_uses(server):
+    code, r = call(server, "session", "POST", {"language": "de", "access_code": "FULL-CODE"})
+    assert code == 200
+    assert query(server, "SELECT access_code FROM participants WHERE participant_id = ?", (r["participant_id"],))[0][0] == "FULLCODE"
+    code, r = call(server, "session", "POST", {"language": "de", "access_code": "full-code"})
+    assert code == 403 and r["detail"] == "access_code_used_up"
+    assert call(server, "access", c="FULL-CODE")[1]["status"] == "used_up"
+
+
+def test_interviewer_needs_no_code(server):
+    code, r = call(server, "session", "POST", {"language": "de"}, token=server["token"])
+    assert code == 200
+
+
+def test_ip_rate_limit(server):
+    ini = server["root"] / "private" / "config.ini"
+    set_ini(ini, "access", "max_sessions_per_ip_hour", "2")
+    try:
+        query_exec(server, "DELETE FROM session_starts")
+        for _ in range(2):
+            assert call(server, "session", "POST", {"language": "de", "access_code": "TEST-CODE"})[0] == 200
+        code, r = call(server, "session", "POST", {"language": "de", "access_code": "TEST-CODE"})
+        assert code == 429 and r["detail"] == "too_many_sessions"
+        hashes = query(server, "SELECT ip_hash FROM session_starts")
+        assert hashes and all("127.0.0.1" not in h[0] and len(h[0]) == 64 for h in hashes)
+    finally:
+        set_ini(ini, "access", "max_sessions_per_ip_hour", "0")
+
+
+def test_clips_must_really_be_played(server):
+    ini = server["root"] / "private" / "config.ini"
+    set_ini(ini, "access", "min_play_fraction", "0.9")
+    try:
+        pid = new_session(server)
+        code, n = call(server, "next", pid=pid)
+        triad = n["triad"]
+        play_all(server, pid, triad)                      # play and ended sent at once: too fast
+        body = {"participant_id": pid, "triad_id": triad["triad_id"], "rt_ms": 1000,
+                "pair": ["A", "B"], "similarity_pole": "x", "contrast_pole": "y"}
+        code, r = call(server, "response", "POST", body)
+        assert code == 400
+        # backdate the play events: now the clips count as heard
+        query_exec(server, "UPDATE play_events SET logged_at = ? WHERE triad_id = ? AND event = 'play'",
+                   ("2020-01-01T00:00:00.000+00:00", triad["triad_id"]))
+        code, r = call(server, "response", "POST", body)
+        assert code == 200, r
+    finally:
+        set_ini(ini, "access", "min_play_fraction", "0")
+
+
+def query_exec(server, sql, params=()):
+    if server["driver"] == "sqlite":
+        import sqlite3
+        con = sqlite3.connect(server["root"] / "private" / "db" / "rgt.sqlite")
+        con.execute(sql, params)
+        con.commit()
+    else:
+        import pymysql
+        con = pymysql.connect(**server["mysql"], autocommit=True)
+        with con.cursor() as c:
+            c.execute(sql.replace("?", "%s"), params)
+    con.close()

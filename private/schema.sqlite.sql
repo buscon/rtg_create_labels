@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS participants (
     config_snapshot    TEXT NOT NULL,      -- JSON copy of the active configuration
     clip_mapping       TEXT NOT NULL,      -- JSON: set number -> element_id
     user_agent         TEXT,
+    access_code        TEXT,               -- group code from the invitation link (design file 14)
     excluded           INTEGER NOT NULL DEFAULT 0,
     exclusion_reason   TEXT
 );
@@ -99,6 +100,13 @@ CREATE TABLE IF NOT EXISTS ratings (
     rated_at       TEXT NOT NULL,
     PRIMARY KEY (participant_id, construct_id, element_id)
 );
+
+-- Rate limit for new sessions (design file 14): salted IP hashes, kept for one hour only
+CREATE TABLE IF NOT EXISTS session_starts (
+    ip_hash      TEXT NOT NULL,
+    started_unix INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_session_starts ON session_starts(ip_hash, started_unix);
 
 CREATE INDEX IF NOT EXISTS idx_triads_participant ON triads(participant_id, order_index);
 CREATE INDEX IF NOT EXISTS idx_constructs_participant ON constructs(participant_id);

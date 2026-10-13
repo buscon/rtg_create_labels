@@ -3,6 +3,8 @@
 //     php /path/to/private/setup.php --public-dir /path/to/httpdocs/rgt
 //         check requirements, validate config, create/update the database tables
 //     ... --set-token   additionally create a new interviewer password
+//     ... --add-code "NOTE" MAX_USES [VALID_UNTIL]   create a group code for an invitation link
+//     ... --list-codes  show the group codes and how often each was used
 //     ... --reset-data  delete all sessions and answers (test data), e.g. before a new clip set;
 //                       asks for confirmation; make a backup first (php private/backup.php)
 // deploy.sh runs this automatically. Without --public-dir, the public/ folder
@@ -85,7 +87,7 @@ if (in_array('--reset-data', $argv, true)) {
     $pdo = rgt_db($cfg);
     try { $pdo->exec('UPDATE constructs SET nearest_construct = NULL'); } catch (Throwable $e) {}
     foreach (['ratings', 'play_events', 'interviewer_judgements', 'responses', 'constructs', 'triads',
-              'participants', 'elements'] as $table) {
+              'participants', 'elements', 'session_starts'] as $table) {
         try { $n = $pdo->exec("DELETE FROM $table"); line('ok', "deleted $n rows from $table"); }
         catch (Throwable $e) { line('note', "$table: " . $e->getMessage()); }
     }
@@ -106,7 +108,50 @@ try {
     exit(1);
 }
 
-// 5. interviewer password
+// 5. group codes for the invitation links (design file 14)
+$codesFile = rgt_path($cfg, $cfg['access']['codes_file']);
+$i = array_search('--add-code', $argv, true);
+if ($i !== false) {
+    $note = $argv[$i + 1] ?? '';
+    $max = (int)($argv[$i + 2] ?? 0);
+    $until = $argv[$i + 3] ?? '';
+    if ($note === '' || $max < 1 || ($until !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $until))) {
+        line('FAIL', 'usage: --add-code "NOTE" MAX_USES [VALID_UNTIL as YYYY-MM-DD]');
+        exit(1);
+    }
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I
+    do {
+        $code = '';
+        for ($k = 0; $k < 8; $k++) $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+    } while (isset(rgt_access_codes($cfg)[$code]));
+    $new = !is_file($codesFile);
+    $h = fopen($codesFile, 'a');
+    if ($new) fputcsv($h, ['code', 'max_uses', 'valid_until', 'note'], ',', '"', '');
+    fputcsv($h, [$code, $max, $until, $note], ',', '"', '');
+    fclose($h);
+    @chmod($codesFile, 0600);
+    $pretty = substr($code, 0, 4) . '-' . substr($code, 4);
+    line('ok', "new code $pretty for \"$note\" (max. $max sessions" . ($until ? ", until $until" : '') . ')');
+    $site = $cfg['access']['site_url'] ?: 'https://<your site>/rgt/';
+    echo "        invitation link: " . rtrim($site, '/') . "/?c=$pretty\n";
+}
+if ($cfg['access']['require_code']) {
+    $codes = rgt_access_codes($cfg);
+    if (!$codes) line('WARN', "no group codes yet: online sessions cannot start (php private/setup.php --add-code \"NOTE\" MAX_USES)");
+    else line('ok', count($codes) . ' group code(s) in ' . $cfg['access']['codes_file']);
+    if (in_array('--list-codes', $argv, true)) {
+        $uses = rgt_code_uses(rgt_db($cfg));
+        foreach ($codes as $c => $r) {
+            $u = $uses[$c] ?? ['n' => 0, 'done' => 0];
+            printf("        %s-%s  used %d of %d (finished %d)%s  %s\n", substr($c, 0, 4), substr($c, 4), $u['n'],
+                (int)$r['max_uses'], $u['done'], ($r['valid_until'] ?? '') !== '' ? ", until {$r['valid_until']}" : '', $r['note'] ?? '');
+        }
+    }
+} else {
+    line('note', 'group codes are switched off ([access] require_code = false): anyone with the link can start');
+}
+
+// 6. interviewer password
 $tokenFile = $privateDir . '/interviewer_token.hash';
 if (in_array('--set-token', $argv, true)) {
     $token = rtrim(strtr(base64_encode(random_bytes(12)), '+/', '-_'), '=');
@@ -118,7 +163,7 @@ if (in_array('--set-token', $argv, true)) {
     line('note', 'no interviewer password yet (php private/setup.php --set-token)');
 }
 
-// 6. the private folder must not be inside the web folder
+// 7. the private folder must not be inside the web folder
 $realPriv = realpath($privateDir) ?: $privateDir;
 $realPub = realpath($publicDir) ?: $publicDir;
 if (str_starts_with($realPriv . '/', $realPub . '/')) {

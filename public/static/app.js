@@ -13,6 +13,7 @@ const S = {
   mode: params.get("mode") === "interviewer" ? "interviewer" : "online",
   invited: ["online", "in_person"].includes(params.get("invited")) ? params.get("invited") : null,
   token: null,
+  code: null,          // group code from the invitation link (?c=...), design file 14
   hpTrials: [],
   practiceDone: false,
 };
@@ -147,6 +148,10 @@ async function init() {
     return render(`<div class="panel"><h1>${tx("mobile_title")}</h1><p>${tx("mobile_text")}</p></div>`);
   }
 
+  // the group code is kept in this browser, so that reloading the page without ?c= still works
+  S.code = params.get("c") || store.get("rgt_code");
+  if (params.get("c")) store.set("rgt_code", params.get("c"));
+
   const saved = store.get("rgt_pid");
   if (saved && S.mode === "online") {
     try {
@@ -157,7 +162,21 @@ async function init() {
     } catch { /* unknown participant: start again */ }
     store.del("rgt_pid");
   }
+  if (S.cfg.require_code && S.mode === "online") {
+    try {
+      const a = await api("access", { query: { c: S.code || "" } });
+      if (a.status !== "ok") return showInactive(a.status);
+    } catch (e) { return showError(e); }
+  }
   showWelcome();
+}
+
+/** The invitation link cannot be used (missing, wrong, expired or used up), or too many sessions from one IP. */
+function showInactive(status) {
+  const key = { missing: "code_missing", invalid: "code_invalid", expired: "code_expired",
+                used_up: "code_used_up", too_many_sessions: "too_many" }[status] || "code_invalid";
+  render(`<div class="panel"><h1>${tx(status === "too_many_sessions" ? "too_many_title" : "inactive_title")}</h1>
+    <p>${tx(key)}</p></div>`);
 }
 
 function showResume(pid, st) {
@@ -217,7 +236,7 @@ function showAbout() {
     const hear = app.querySelector("input[name=hear]:checked");
     try {
       const res = await api("session", { method: "POST", body: {
-        language: S.lang, invited_mode: S.invited,
+        language: S.lang, invited_mode: S.invited, access_code: S.code,
         headphones_model: document.getElementById("hp").value,
         hearing_problems: hear ? hear.value : null,
       } });
@@ -226,6 +245,8 @@ function showAbout() {
       if (S.mode === "online") store.set("rgt_pid", S.pid);
       showVolume();
     } catch (e) {
+      if (e.status === 403 && e.message.startsWith("access_code_")) return showInactive(e.message.slice(12));
+      if (e.status === 429) return showInactive("too_many_sessions");
       if (e.status === 403) {
         const m = document.getElementById("msg");
         setText(m, "interviewer_wrong"); m.hidden = false;

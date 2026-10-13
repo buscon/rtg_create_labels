@@ -83,6 +83,21 @@ php ~/rtg_create_labels/private/setup.php --public-dir ~/marcellolussana.net/htt
 
 All lines should show `[ok]`. Write the password down; only a hash is stored on the server.
 
+## Invitation links (group codes)
+
+Online sessions start only with a group code in the link (`[access] require_code` in `config.ini`,
+design file 14). Create one code per group on the server:
+
+```bash
+php ~/rtg_create_labels/private/setup.php --add-code "Chor Bamberg" 20 2026-12-31
+#   [ok] new code K7M2-QX9P for "Chor Bamberg" (max. 20 sessions, until 2026-12-31)
+#        invitation link: https://marcellolussana.net/rgt/?c=K7M2-QX9P
+php ~/rtg_create_labels/private/setup.php --list-codes     # uses per code
+```
+
+The codes are stored in `private/access_codes.csv` (not in git). To stop a link, delete its line or
+set an end date in the past; to allow more sessions, raise `max_uses`.
+
 ## Changing the clip set
 
 The database stores the clips. As long as no session has been started, `setup.php` (run by every

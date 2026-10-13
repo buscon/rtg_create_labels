@@ -5,6 +5,8 @@ private/db_credentials.ini
 private/headphone_manifest.csv
 /data/
 private/interviewer_token.hash
+private/access_codes.csv
+private/ip_salt.key
 public/private_path.php
 export/
 
@@ -19,6 +21,8 @@ public/static/vendor/
 # System and tool files
 .DS_Store
 __pycache__/
+.venv/
+venv/
 *.pyc
 .pytest_cache/
 node_modules/

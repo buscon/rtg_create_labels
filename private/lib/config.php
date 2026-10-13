@@ -32,6 +32,9 @@ function rgt_load_config(string $privateDir, bool $checkFiles = true): array {
             }
         }
     }
+    // optional section (added later): defaults keep older config files valid
+    $raw['access'] = ($raw['access'] ?? []) + ['require_code' => false, 'codes_file' => 'access_codes.csv',
+        'max_sessions_per_ip_hour' => 0, 'min_play_fraction' => 0.0, 'site_url' => ''];
     $raw['_private_dir'] = $privateDir;
     rgt_validate_config($raw, $checkFiles);
     return $raw;
@@ -112,6 +115,11 @@ function rgt_validate_config(array $c, bool $checkFiles): void {
     $hp = $c['headphone_check'];
     if ($hp['enabled'] && ($hp['pass_min_correct'] < 1 || $hp['pass_min_correct'] > $hp['n_trials']))
         $e[] = 'pass_min_correct must be between 1 and n_trials';
+    $ac = $c['access'];
+    if (!is_numeric($ac['min_play_fraction']) || $ac['min_play_fraction'] < 0 || $ac['min_play_fraction'] > 1)
+        $e[] = '[access] min_play_fraction must be between 0 and 1';
+    if (!is_int($ac['max_sessions_per_ip_hour']) || $ac['max_sessions_per_ip_hour'] < 0)
+        $e[] = '[access] max_sessions_per_ip_hour must be 0 or a positive whole number';
     if ($c['triads']['practice_triad'] && count($c['stimuli']['practice_clips']) !== 3)
         $e[] = 'practice_clips must list exactly 3 files';
 
@@ -159,6 +167,7 @@ function rgt_public_config(array $c): array {
         'headphone_check' => ['enabled' => (bool)$c['headphone_check']['enabled'],
                               'n_trials' => $c['headphone_check']['n_trials']],
         'block_mobile' => (bool)$c['device']['block_mobile'],
+        'require_code' => (bool)$c['access']['require_code'],
         'similarity' => ['backend' => $c['similarity']['backend'],
                          'model' => $c['similarity']['embedding_model'],
                          'wait_s' => $c['similarity']['embedding_wait_s']],

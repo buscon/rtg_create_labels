@@ -86,6 +86,7 @@ function rgt_init_db(array $cfg): void {
     }
     // columns added after the first version: add them to existing databases
     rgt_ensure_column($pdo, 'responses', 'language', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(10) NULL');
+    rgt_ensure_column($pdo, 'participants', 'access_code', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(50) NULL');
 
     rgt_begin($pdo);
     try {
@@ -275,4 +276,104 @@ function rgt_check_repetition(array $new, array $earlier, array $cfg): array {
     }
     return ['is_new' => $best['margin'] < 0, 'nearest' => $best['nearest'],
             'score' => $best['score'], 'backend' => $best['backend']];
+}
+
+// ------------------------------------------------------------------ access protection (design file 14)
+
+/** Codes are compared without case, spaces and dashes: "k7m2-qx9p" = "K7M2QX9P". */
+function rgt_normalise_code(string $code): string {
+    return strtoupper((string)preg_replace('/[^A-Za-z0-9]/', '', $code));
+}
+
+/** The group codes from private/access_codes.csv (code, max_uses, valid_until, note), keyed by normalised code. */
+function rgt_access_codes(array $cfg): array {
+    $file = rgt_path($cfg, $cfg['access']['codes_file']);
+    if (!is_file($file)) return [];
+    $codes = [];
+    foreach (rgt_read_csv($file) as $r) {
+        $c = rgt_normalise_code((string)($r['code'] ?? ''));
+        if ($c !== '') $codes[$c] = $r;
+    }
+    return $codes;
+}
+
+/** 'ok' | 'missing' | 'invalid' | 'expired' | 'used_up' */
+function rgt_code_status(PDO $pdo, array $cfg, string $code): string {
+    if (!$cfg['access']['require_code']) return 'ok';
+    $code = rgt_normalise_code($code);
+    if ($code === '') return 'missing';
+    $row = rgt_access_codes($cfg)[$code] ?? null;
+    if ($row === null) return 'invalid';
+    $until = trim((string)($row['valid_until'] ?? ''));
+    if ($until !== '' && gmdate('Y-m-d') > $until) return 'expired';
+    $max = (int)($row['max_uses'] ?? 0);
+    if ($max > 0) {
+        $st = $pdo->prepare('SELECT COUNT(*) FROM participants WHERE access_code = ?');
+        $st->execute([$code]);
+        if ((int)$st->fetchColumn() >= $max) return 'used_up';
+    }
+    return 'ok';
+}
+
+function rgt_code_uses(PDO $pdo): array {
+    $rows = $pdo->query('SELECT access_code, COUNT(*) AS n, SUM(CASE WHEN finished_at IS NOT NULL THEN 1 ELSE 0 END) AS done
+        FROM participants WHERE access_code IS NOT NULL GROUP BY access_code')->fetchAll();
+    $out = [];
+    foreach ($rows as $r) $out[$r['access_code']] = ['n' => (int)$r['n'], 'done' => (int)$r['done']];
+    return $out;
+}
+
+/** Salted hash of the client IP; the salt is a random key in the private folder (not in git). */
+function rgt_ip_hash(array $cfg): string {
+    $file = $cfg['_private_dir'] . '/ip_salt.key';
+    $salt = is_file($file) ? trim((string)file_get_contents($file)) : '';
+    if ($salt === '') {
+        $salt = bin2hex(random_bytes(32));
+        if (@file_put_contents($file, $salt) !== false) @chmod($file, 0600);
+    }
+    return hash_hmac('sha256', (string)($_SERVER['REMOTE_ADDR'] ?? ''), $salt);
+}
+
+/** True if this IP may start another session; old entries (> 1 hour) are deleted on the way. */
+function rgt_ip_allowed(PDO $pdo, array $cfg): bool {
+    $max = (int)$cfg['access']['max_sessions_per_ip_hour'];
+    if ($max <= 0) return true;
+    $now = time();
+    $pdo->prepare('DELETE FROM session_starts WHERE started_unix < ?')->execute([$now - 3600]);
+    $st = $pdo->prepare('SELECT COUNT(*) FROM session_starts WHERE ip_hash = ?');
+    $st->execute([rgt_ip_hash($cfg)]);
+    return (int)$st->fetchColumn() < $max;
+}
+
+function rgt_ip_record(PDO $pdo, array $cfg): void {
+    if ((int)$cfg['access']['max_sessions_per_ip_hour'] <= 0) return;
+    $pdo->prepare('INSERT INTO session_starts (ip_hash, started_unix) VALUES (?, ?)')->execute([rgt_ip_hash($cfg), time()]);
+}
+
+/** Seconds since the epoch of a timestamp written by rgt_now(). */
+function rgt_ts(string $ts): float {
+    return (float)(new DateTimeImmutable($ts))->format('U.u');
+}
+
+/**
+ * Was every clip of the triad played to the end? With min_play_fraction > 0, "ended" counts only
+ * if it arrived at least that share of the clip duration after the first "play" of the clip
+ * (server time), so a script cannot skip the listening.
+ */
+function rgt_clips_fully_played(PDO $pdo, array $cfg, array $triad, array $elementIds): bool {
+    $min = (float)$cfg['access']['min_play_fraction'] * (float)$cfg['stimuli']['clip_duration_s'];
+    $st = $pdo->prepare('SELECT element_id, event, logged_at FROM play_events WHERE triad_id = ? ORDER BY event_id');
+    $st->execute([$triad['triad_id']]);
+    $first = $ended = [];
+    foreach ($st->fetchAll() as $r) {
+        $id = (int)$r['element_id'];
+        if ($r['event'] === 'play' && !isset($first[$id])) $first[$id] = rgt_ts($r['logged_at']);
+        if ($r['event'] === 'ended') $ended[$id] = rgt_ts($r['logged_at']);
+    }
+    foreach ($elementIds as $id) {
+        $id = (int)$id;
+        if (!isset($ended[$id])) return false;
+        if ($min > 0 && (!isset($first[$id]) || $ended[$id] - $first[$id] < $min)) return false;
+    }
+    return true;
 }

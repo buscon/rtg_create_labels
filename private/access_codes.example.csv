@@ -1,0 +1,2 @@
+code,max_uses,valid_until,note
+K7M2QX9P,15,2026-12-31,example group (create real codes with: php private/setup.php --add-code)

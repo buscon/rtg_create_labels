@@ -164,6 +164,10 @@ case 'GET health':
     out(['ok' => true, 'config_version' => $cfg['study']['config_version'],
          'similarity_backend' => $cfg['similarity']['backend']]);
 
+case 'GET access':
+    // checked when the page opens, so that an inactive link is reported before the consent page
+    out(['status' => rgt_code_status($pdo, $cfg, (string)($_GET['c'] ?? '')), 'required' => (bool)$cfg['access']['require_code']]);
+
 case 'POST session':
     $b = body();
     $lang = (string)($b['language'] ?? '');
@@ -173,6 +177,16 @@ case 'POST session':
     if (isset($_SERVER['HTTP_X_INTERVIEWER_TOKEN'])) {
         if (!$cfg['interviewer']['enabled'] || !interviewer_token_ok($cfg)) fail(403, 'invalid interviewer password');
         $mode = 'interviewer';
+    }
+    $code = null;
+    if ($mode === 'online') {
+        // design file 14: rate limit per IP and group code from the invitation link
+        if (!rgt_ip_allowed($pdo, $cfg)) fail(429, 'too_many_sessions');
+        if ($cfg['access']['require_code']) {
+            $code = rgt_normalise_code((string)($b['access_code'] ?? ''));
+            $status = rgt_code_status($pdo, $cfg, $code);
+            if ($status !== 'ok') fail(403, "access_code_$status");
+        }
     }
     rgt_begin($pdo);
     try {
@@ -203,16 +217,17 @@ case 'POST session':
         }
         $snapshot = $cfg; unset($snapshot['_private_dir']);
         $pdo->prepare('INSERT INTO participants (participant_id, mode, invited_mode, language, started_at, headphone_sequence,
-            headphones_model, hearing_problems, config_version, config_snapshot, clip_mapping, user_agent)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')->execute([
+            headphones_model, hearing_problems, config_version, config_snapshot, clip_mapping, user_agent, access_code)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([
             $pid, $mode, $invited, $lang, rgt_now(), $hpSeq ? json_encode($hpSeq) : null,
             str_or_null($b['headphones_model'] ?? null, 200), str_or_null($b['hearing_problems'] ?? null, 200),
             (string)$cfg['study']['config_version'], json_encode($snapshot, JSON_UNESCAPED_UNICODE),
-            json_encode($mapping), str_or_null($_SERVER['HTTP_USER_AGENT'] ?? null, 500)]);
+            json_encode($mapping), str_or_null($_SERVER['HTTP_USER_AGENT'] ?? null, 500), $code]);
         $ins = $pdo->prepare('INSERT INTO triads (participant_id, order_index, set_number, pos_a, pos_b, pos_c) VALUES (?,?,?,?,?,?)');
         foreach ($plan as $row) {
             $ins->execute([$pid, $row['order_index'], $row['set_number'], ...$row['elements']]);
         }
+        if ($mode === 'online') rgt_ip_record($pdo, $cfg);
         rgt_commit($pdo);
     } catch (Throwable $e) {
         rgt_rollback($pdo);
@@ -271,10 +286,8 @@ case 'POST response':
         $chk->execute([$t['triad_id']]);
         if ($chk->fetch()) throw new DomainException('409|triad already answered');
         if ($cfg['stimuli']['require_full_play']) {
-            $st = $pdo->prepare("SELECT DISTINCT element_id FROM play_events WHERE triad_id = ? AND event = 'ended'");
-            $st->execute([$t['triad_id']]);
-            $ended = array_map('intval', $st->fetchAll(PDO::FETCH_COLUMN));
-            foreach (POS as $col) if (!in_array((int)$t[$col], $ended, true)) throw new DomainException('400|all clips must be played to the end');
+            if (!rgt_clips_fully_played($pdo, $cfg, $t, array_map(fn($col) => $t[$col], array_values(POS))))
+                throw new DomainException('400|all clips must be played to the end');
         }
         $isPractice = (int)$t['order_index'] === 0;
         $noDiff = !empty($b['no_difference']);
