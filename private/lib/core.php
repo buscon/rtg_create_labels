@@ -87,6 +87,8 @@ function rgt_init_db(array $cfg): void {
     // columns added after the first version: add them to existing databases
     rgt_ensure_column($pdo, 'responses', 'language', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(10) NULL');
     rgt_ensure_column($pdo, 'participants', 'access_code', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(50) NULL');
+    rgt_ensure_column($pdo, 'participants', 'listening_device', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(20) NULL');
+    rgt_ensure_column($pdo, 'participants', 'listening_environment', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(20) NULL');
 
     rgt_begin($pdo);
     try {

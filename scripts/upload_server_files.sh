@@ -24,4 +24,6 @@ if [ -f private/headphone_manifest.csv ]; then
 else
     echo "note: private/headphone_manifest.csv missing; run scripts/make_headphone_stimuli.py first"
 fi
+# the web server must be able to read the files (scp keeps the local permissions, often rw-------)
+ssh "$LOGIN" "chmod 755 '$WEB/audio' '$WEB/audio/headphone'; chmod 644 '$WEB'/audio/*.flac; chmod 644 '$WEB'/audio/headphone/*.wav 2>/dev/null; true"
 echo "uploaded. Check on the server: php $CLONE/private/setup.php --public-dir $WEB"

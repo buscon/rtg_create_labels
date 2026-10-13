@@ -222,8 +222,21 @@ function startEmbedding() {
 
 function showAbout() {
   render(`<div class="panel"><h1>${tx("about_title")}</h1>
-    <label class="block" for="hp">${tx("headphones_q")}</label>
+    <p>${tx("setting_text")}</p>
+    <label class="block">${tx("device_q")}</label>
+    <div class="radios">
+      <label><input type="radio" name="device" value="headphones"> ${tx("device_headphones")}</label>
+      <label><input type="radio" name="device" value="speakers"> ${tx("device_speakers")}</label>
+      <label><input type="radio" name="device" value="builtin"> ${tx("device_builtin")}</label>
+    </div>
+    <label class="block" for="hp">${tx("device_model_q")}</label>
     <input type="text" id="hp" maxlength="200" autocomplete="off">
+    <label class="block">${tx("environment_q")}</label>
+    <div class="radios">
+      <label><input type="radio" name="env" value="quiet"> ${tx("environment_quiet")}</label>
+      <label><input type="radio" name="env" value="some_noise"> ${tx("environment_some")}</label>
+      <label><input type="radio" name="env" value="noisy"> ${tx("environment_noisy")}</label>
+    </div>
     <label class="block">${tx("hearing_q")}</label>
     <div class="radios">
       <label><input type="radio" name="hear" value="no"> ${tx("hearing_no")}</label>
@@ -233,11 +246,19 @@ function showAbout() {
     <p class="note" id="msg" hidden></p>
     <div class="actions"><button class="primary" id="go">${tx("next")}</button></div></div>`);
   document.getElementById("go").onclick = async (ev) => {
-    ev.target.disabled = true;
     const hear = app.querySelector("input[name=hear]:checked");
+    const device = app.querySelector("input[name=device]:checked");
+    const env = app.querySelector("input[name=env]:checked");
+    if (!device || !env) {
+      const m = document.getElementById("msg");
+      setText(m, "setting_missing"); m.hidden = false;
+      return;
+    }
+    ev.target.disabled = true;
     try {
       const res = await api("session", { method: "POST", body: {
         language: S.lang, invited_mode: S.invited, access_code: S.code,
+        listening_device: device.value, listening_environment: env.value,
         headphones_model: document.getElementById("hp").value,
         hearing_problems: hear ? hear.value : null,
       } });
@@ -263,19 +284,31 @@ function showAbout() {
 function showVolume() {
   render(`<div class="panel"><h1>${tx("volume_title")}</h1><p>${tx("volume_text")}</p>
     <div class="actions"><button id="play">${tx("play")}</button>
-    <span class="spacer"></span><button class="primary" id="go" disabled>${tx("volume_done")}</button></div></div>`);
+    <span class="spacer"></span><button class="primary" id="go" disabled>${tx("volume_done")}</button></div>
+    <p class="note" id="msg" hidden></p></div>`);
   const audio = new Audio(S.cfg.calibration_url);
   audio.loop = true;
   const play = document.getElementById("play");
   const go = document.getElementById("go");
+  // the button follows what the audio element really does
+  audio.onplaying = () => { setText(play, "pause"); go.disabled = false; };
+  audio.onpause = () => setText(play, "play");
+  audio.onerror = () => audioFailed();
   play.onclick = () => {
-    if (audio.paused) { audio.play(); setText(play, "pause"); go.disabled = false; }
-    else { audio.pause(); setText(play, "play"); }
+    if (audio.paused) audio.play().catch(audioFailed);
+    else audio.pause();
   };
   go.onclick = () => {
     audio.pause();
     if (S.cfg.headphone_check.enabled) showHeadphone(0, []); else showInstructions();
   };
+}
+
+/** A sound could not be loaded or played: say so instead of failing silently. */
+function audioFailed(e) {
+  if (e) console.error(e);
+  const m = document.getElementById("msg");
+  if (m) { setText(m, "audio_error"); m.hidden = false; }
 }
 
 function showHeadphone(i, answers) {
@@ -417,8 +450,12 @@ function showTriad(triad) {
     const bar = el.querySelector(".bar > span");
     const status = el.querySelector(".status");
     players[pos] = { audio };
+    audio.onerror = () => { setText(status, "audio_error"); status.classList.add("err"); };
     btn.onclick = () => {
-      if (audio.paused) { pauseOthers(pos); audio.play(); } else audio.pause();
+      if (audio.paused) {
+        pauseOthers(pos);
+        audio.play().catch(() => { setText(status, "audio_error"); status.classList.add("err"); });
+      } else audio.pause();
     };
     audio.onplay = () => { setText(btn, "pause"); logEvent(pos, "play").catch(() => {}); };
     audio.onpause = () => {

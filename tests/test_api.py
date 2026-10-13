@@ -57,6 +57,7 @@ def server(request, tmp_path_factory):
     set_ini(ini, "server", "db_driver", f'"{driver}"')
     # access protection (design file 14): one group code for all tests; the timing check and the
     # IP limit are switched off here and tested separately
+    set_ini(ini, "headphone_check", "enabled", "true")   # off in the study config, but still tested
     set_ini(ini, "access", "require_code", "true")
     set_ini(ini, "access", "min_play_fraction", "0")
     set_ini(ini, "access", "max_sessions_per_ip_hour", "0")
@@ -423,3 +424,18 @@ def query_exec(server, sql, params=()):
         with con.cursor() as c:
             c.execute(sql.replace("?", "%s"), params)
     con.close()
+
+
+def test_listening_situation_is_stored(server):
+    code, r = call(server, "session", "POST", {"language": "en", "access_code": "TEST-CODE",
+                                                "listening_device": "speakers", "listening_environment": "some_noise",
+                                                "headphones_model": "Genelec 8020"})
+    assert code == 200
+    row = query(server, "SELECT listening_device, listening_environment, headphones_model FROM participants "
+                        "WHERE participant_id = ?", (r["participant_id"],))[0]
+    assert row == ("speakers", "some_noise", "Genelec 8020")
+    code, r = call(server, "session", "POST", {"language": "en", "access_code": "TEST-CODE",
+                                                "listening_device": "<script>", "listening_environment": "x"})
+    row = query(server, "SELECT listening_device, listening_environment FROM participants WHERE participant_id = ?",
+                (r["participant_id"],))[0]
+    assert row == (None, None)
