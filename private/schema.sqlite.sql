@@ -70,7 +70,8 @@ CREATE TABLE IF NOT EXISTS responses (
     no_difference  INTEGER NOT NULL DEFAULT 0,
     construct_id   INTEGER REFERENCES constructs(construct_id),
     rt_ms          INTEGER,
-    language       TEXT,                       -- interface language when the answer was given
+    language       TEXT,                       -- interface language when the answer was given,
+    hints_shown    TEXT,                       -- JSON list of the thinking prompts opened (design file 07)
     submitted_at   TEXT NOT NULL
 );
 

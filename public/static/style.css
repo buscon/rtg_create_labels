@@ -99,3 +99,9 @@ textarea { resize: vertical; min-height: 2.6rem; }
 .credits h2 { font-size: 1em; margin: 0 0 0.5rem; }
 .credits ul { padding-left: 1.2rem; margin: 0.5rem 0; }
 .clip .status.err { color: #b00020; }
+
+/* thinking prompts under the text fields */
+.ideas { margin-top: .6rem; }
+.linkbtn { background: none; border: none; padding: 0; color: var(--accent); text-decoration: underline; cursor: pointer; font: inherit; }
+.idea-list { margin: .5rem 0 0; padding-left: 1.3rem; color: var(--muted); }
+.idea-list li { margin: .25rem 0; }

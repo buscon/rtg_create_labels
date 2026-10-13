@@ -271,7 +271,7 @@ function showAbout() {
       setText(m, "setting_missing"); m.hidden = false;
       return;
     }
-    ev.target.disabled = true;
+    ev.currentTarget.disabled = true;
     try {
       const res = await api("session", { method: "POST", body: {
         language: S.lang, invited_mode: S.invited, access_code: S.code,
@@ -416,6 +416,9 @@ function showTriad(triad) {
         <label class="block" for="con" id="con-label"></label>
         <input type="text" id="con" maxlength="${L.max_chars}" autocomplete="off">
       </div>
+      ${S.cfg.interface.thinking_prompts ? `<div class="ideas">
+        <button type="button" class="linkbtn" id="idea">${tx("need_idea")}</button>
+        <ol class="idea-list" id="idea-list"></ol></div>` : ""}
       <p class="note" id="msg" hidden></p>
     </div>
     <div class="actions">
@@ -548,10 +551,26 @@ function showTriad(triad) {
       document.getElementById("submit").innerHTML = `<span class="spinner"></span>${tx("saving")}`;
       embedding = await embedPoles(sim, con, S.cfg.similarity.model, S.cfg.similarity.wait_s);
     }
-    send({ pair: [...selected], similarity_pole: sim, contrast_pole: con, no_difference: false, embedding },
+    send({ pair: [...selected], similarity_pole: sim, contrast_pole: con, no_difference: false, embedding,
+           hints_shown: hints },
          { sim, con, pair: [...selected] });
   };
-  document.getElementById("nodiff").onclick = () => send({ no_difference: true }, null);
+  document.getElementById("nodiff").onclick = () => send({ no_difference: true, hints_shown: hints }, null);
+
+  // thinking prompts: one more per click, in a fixed order; which ones were opened is saved with the answer
+  const N_PROMPTS = 6;
+  const hints = [];
+  const ideaBtn = document.getElementById("idea");
+  if (ideaBtn) ideaBtn.onclick = () => {
+    const n = hints.length + 1;
+    if (n > N_PROMPTS) return;
+    hints.push(n);
+    const li = document.createElement("li");
+    li.innerHTML = tx(`prompt_${n}`);
+    document.getElementById("idea-list").appendChild(li);
+    if (hints.length === N_PROMPTS) ideaBtn.hidden = true;
+    else setText(ideaBtn, "more_idea");
+  };
   updateState();
 }
 
@@ -583,7 +602,7 @@ function showInterviewerPanel(res, poles) {
   document.getElementById("go").onclick = async (ev) => {
     const j = app.querySelector("input[name=j]:checked");
     if (!j) { const m = document.getElementById("msg"); setText(m, "iv_choose"); m.hidden = false; return; }
-    ev.target.disabled = true;
+    ev.currentTarget.disabled = true;
     try {
       await api("judgement", { method: "POST", body: {
         participant_id: S.pid, construct_id: res.construct_id, judged_new: j.value === "new",

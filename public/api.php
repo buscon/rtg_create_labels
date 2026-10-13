@@ -342,9 +342,13 @@ case 'POST response':
             $cid = (int)$pdo->lastInsertId();
         }
         $lang = in_array($b['language'] ?? null, $cfg['study']['languages'], true) ? $b['language'] : null;
-        $pdo->prepare('INSERT INTO responses (triad_id, pair_a, pair_b, odd_one, no_difference, construct_id, rt_ms, language, submitted_at)
-            VALUES (?,?,?,?,?,?,?,?,?)')->execute([$t['triad_id'], $pairIds[0], $pairIds[1], $odd, (int)$noDiff, $cid,
-            isset($b['rt_ms']) ? (int)$b['rt_ms'] : null, $lang, rgt_now()]);
+        // thinking prompts the participant opened in this triad: list of prompt numbers, in order
+        $hints = array_values(array_filter(is_array($b['hints_shown'] ?? null) ? $b['hints_shown'] : [],
+            fn($h) => is_int($h) && $h >= 1 && $h <= 20));
+        $pdo->prepare('INSERT INTO responses (triad_id, pair_a, pair_b, odd_one, no_difference, construct_id, rt_ms, language,
+            submitted_at, hints_shown) VALUES (?,?,?,?,?,?,?,?,?,?)')->execute([$t['triad_id'], $pairIds[0], $pairIds[1], $odd,
+            (int)$noDiff, $cid, isset($b['rt_ms']) ? (int)$b['rt_ms'] : null, $lang, rgt_now(),
+            $hints ? json_encode(array_slice($hints, 0, 50)) : null]);
         $reason = null;
         if (!$isPractice) {
             $st = $cfg['stopping'];

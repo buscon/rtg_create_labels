@@ -464,3 +464,15 @@ def test_group_settings(server):
         assert call(server, "session", "POST", {"language": "de", "access_code": "FULL-CODE"})[0] in (403,)  # used up
     finally:
         ini.write_text(original, encoding="utf-8")
+
+
+def test_thinking_prompts_are_stored(server):
+    pid = new_session(server)
+    code, n = call(server, "next", pid=pid)
+    triad = n["triad"]
+    play_all(server, pid, triad)
+    code, r = call(server, "response", "POST", {"participant_id": pid, "triad_id": triad["triad_id"], "rt_ms": 1,
+                                               "pair": ["A", "B"], "similarity_pole": "x", "contrast_pole": "y",
+                                               "hints_shown": [1, 2, "bad", 99]})
+    assert code == 200
+    assert query(server, "SELECT hints_shown FROM responses WHERE triad_id = ?", (triad["triad_id"],))[0][0] == "[1,2]"
