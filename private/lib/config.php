@@ -35,6 +35,8 @@ function rgt_load_config(string $privateDir, bool $checkFiles = true): array {
     // optional section (added later): defaults keep older config files valid
     $raw['access'] = ($raw['access'] ?? []) + ['require_code' => false, 'codes_file' => 'access_codes.csv',
         'max_sessions_per_ip_hour' => 0, 'min_play_fraction' => 0.0, 'site_url' => ''];
+    $raw['interface'] = ($raw['interface'] ?? []) + ['pause_when_hidden' => false, 'pause_on_blur' => false,
+        'no_difference_delay_s' => 0];
     $raw['_private_dir'] = $privateDir;
     rgt_validate_config($raw, $checkFiles);
     return $raw;
@@ -115,6 +117,8 @@ function rgt_validate_config(array $c, bool $checkFiles): void {
     $hp = $c['headphone_check'];
     if ($hp['enabled'] && ($hp['pass_min_correct'] < 1 || $hp['pass_min_correct'] > $hp['n_trials']))
         $e[] = 'pass_min_correct must be between 1 and n_trials';
+    if (!is_int($c['interface']['no_difference_delay_s']) || $c['interface']['no_difference_delay_s'] < 0)
+        $e[] = '[interface] no_difference_delay_s must be 0 or a positive whole number';
     $ac = $c['access'];
     if (!is_numeric($ac['min_play_fraction']) || $ac['min_play_fraction'] < 0 || $ac['min_play_fraction'] > 1)
         $e[] = '[access] min_play_fraction must be between 0 and 1';
@@ -168,6 +172,10 @@ function rgt_public_config(array $c): array {
                               'n_trials' => $c['headphone_check']['n_trials']],
         'block_mobile' => (bool)$c['device']['block_mobile'],
         'require_code' => (bool)$c['access']['require_code'],
+        'interface' => ['pause_when_hidden' => (bool)$c['interface']['pause_when_hidden'],
+                        'pause_on_blur' => (bool)$c['interface']['pause_on_blur'],
+                        'no_difference_delay_s' => (int)$c['interface']['no_difference_delay_s']],
+        'group' => $c['_group'] ?? null,
         'similarity' => ['backend' => $c['similarity']['backend'],
                          'model' => $c['similarity']['embedding_model'],
                          'wait_s' => $c['similarity']['embedding_wait_s']],
@@ -176,4 +184,32 @@ function rgt_public_config(array $c): array {
         'calibration_url' => $c['stimuli']['practice_clips']
             ? 'audio/' . rawurlencode($c['stimuli']['practice_clips'][0]) : null,
     ];
+}
+
+/** Keys that a [group.NAME] section may change (design file 14). */
+const RGT_GROUP_KEYS = ['interface.pause_when_hidden', 'interface.pause_on_blur', 'interface.no_difference_delay_s',
+    'stopping.min_triads', 'stopping.consecutive_not_new', 'stopping.time_limit_min', 'triads.max_triads',
+    'access.min_play_fraction', 'access.max_sessions_per_ip_hour'];
+
+/**
+ * Settings for one group: [group.NAME] in config.ini, where NAME is the note of the
+ * participant's code in access_codes.csv (e.g. [group.test]). Lines have the form
+ * "section.key = value"; only the keys in RGT_GROUP_KEYS are used. If the result is not
+ * a valid configuration, the group settings are ignored (and logged).
+ */
+function rgt_apply_group(array $cfg, ?string $code): array {
+    if ($code === null || $code === '') return $cfg;
+    $row = rgt_access_codes($cfg)[rgt_normalise_code($code)] ?? null;
+    $name = trim((string)($row['note'] ?? ''));
+    if ($name === '' || !isset($cfg["group.$name"]) || !is_array($cfg["group.$name"])) return $cfg;
+    $new = $cfg;
+    foreach ($cfg["group.$name"] as $k => $v) {
+        if (!in_array($k, RGT_GROUP_KEYS, true)) { error_log("[rgt] [group.$name] $k cannot be set per group"); continue; }
+        [$sec, $key] = explode('.', $k, 2);
+        $new[$sec][$key] = $v;
+    }
+    try { rgt_validate_config($new, false); }
+    catch (ConfigError $e) { error_log("[rgt] [group.$name] ignored: " . $e->getMessage()); return $cfg; }
+    $new['_group'] = $name;
+    return $new;
 }

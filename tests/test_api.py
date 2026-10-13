@@ -439,3 +439,28 @@ def test_listening_situation_is_stored(server):
     row = query(server, "SELECT listening_device, listening_environment FROM participants WHERE participant_id = ?",
                 (r["participant_id"],))[0]
     assert row == (None, None)
+
+
+def test_group_settings(server):
+    ini = server["root"] / "private" / "config.ini"
+    original = ini.read_text(encoding="utf-8")
+    try:
+        ini.write_text(original + "\n[group.tests]\ninterface.no_difference_delay_s = 7\n"
+                       "server.db_driver = \"sqlite\"\n", encoding="utf-8")        # not allowed per group: ignored
+        _, base = call(server, "config")
+        _, grp = call(server, "config", c="test-code")
+        assert base["interface"]["no_difference_delay_s"] == 120 and base["group"] is None
+        assert grp["interface"]["no_difference_delay_s"] == 7 and grp["group"] == "tests"
+        # an invalid group value is ignored as a whole
+        ini.write_text(original + "\n[group.tests]\ninterface.no_difference_delay_s = -5\n", encoding="utf-8")
+        _, grp = call(server, "config", c="test-code")
+        assert grp["interface"]["no_difference_delay_s"] == 120 and grp["group"] is None
+        # the participant's group also applies to later requests (here: the IP limit)
+        ini.write_text(original.replace("max_sessions_per_ip_hour = 0", "max_sessions_per_ip_hour = 1", 1)
+                       + "\n[group.tests]\naccess.max_sessions_per_ip_hour = 0\n", encoding="utf-8")
+        query_exec(server, "DELETE FROM session_starts")
+        for _ in range(3):
+            assert call(server, "session", "POST", {"language": "de", "access_code": "TEST-CODE"})[0] == 200
+        assert call(server, "session", "POST", {"language": "de", "access_code": "FULL-CODE"})[0] in (403,)  # used up
+    finally:
+        ini.write_text(original, encoding="utf-8")

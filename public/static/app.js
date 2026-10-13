@@ -135,8 +135,12 @@ function isMobile() {
 
 async function init() {
   try {
-    S.cfg = await api("config");
+    // the group code is read first: some settings can differ per group ([group.NAME] in config.ini)
+    S.code = params.get("c") || store.get("rgt_code");
+    if (params.get("c")) store.set("rgt_code", params.get("c"));
+    S.cfg = await api("config", { query: S.code ? { c: S.code } : {} });
   } catch (e) { return showError(e); }
+  installPauseOnLeave();
   S.lang = initialLanguage();
   const sw = document.getElementById("lang-switch");
   sw.innerHTML = S.cfg.languages.map((l) =>
@@ -148,10 +152,6 @@ async function init() {
   if (S.cfg.block_mobile && isMobile() && S.mode !== "interviewer") {
     return render(`<div class="panel"><h1>${tx("mobile_title")}</h1><p>${tx("mobile_text")}</p></div>`);
   }
-
-  // the group code is kept in this browser, so that reloading the page without ?c= still works
-  S.code = params.get("c") || store.get("rgt_code");
-  if (params.get("c")) store.set("rgt_code", params.get("c"));
 
   const saved = store.get("rgt_pid");
   if (saved && S.mode === "online") {
@@ -178,6 +178,24 @@ function showInactive(status) {
                 used_up: "code_used_up", too_many_sessions: "too_many" }[status] || "code_invalid";
   render(`<div class="panel"><h1>${tx(status === "too_many_sessions" ? "too_many_title" : "inactive_title")}</h1>
     <p>${tx(key)}</p></div>`);
+}
+
+// ------------------------------------------------------------------ pause when the page is left
+
+/** Audio elements of the current screen; paused when the participant leaves the page (config [interface]). */
+const active = new Set();
+
+function installPauseOnLeave() {
+  const pauseAll = () => {
+    let paused = false;
+    active.forEach((a) => { if (!a.paused) { a.pause(); paused = true; } });
+    const note = document.getElementById("leftnote");
+    if (paused && note) { setText(note, "paused_left"); note.hidden = false; }
+  };
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden && S.cfg.interface.pause_when_hidden) pauseAll();
+  });
+  window.addEventListener("blur", () => { if (S.cfg.interface.pause_on_blur) pauseAll(); });
 }
 
 function showResume(pid, st) {
@@ -284,8 +302,9 @@ function showVolume() {
   render(`<div class="panel"><h1>${tx("volume_title")}</h1><p>${tx("volume_text")}</p>
     <div class="actions"><button id="play">${tx("play")}</button>
     <span class="spacer"></span><button class="primary" id="go" disabled>${tx("volume_done")}</button></div>
-    <p class="note" id="msg" hidden></p></div>`);
+    <p class="note" id="msg" hidden></p><p class="note" id="leftnote" hidden></p></div>`);
   const audio = new Audio(S.cfg.calibration_url);
+  active.clear(); active.add(audio);
   audio.loop = true;
   const play = document.getElementById("play");
   const go = document.getElementById("go");
@@ -294,6 +313,7 @@ function showVolume() {
   audio.onpause = () => setText(play, "play");
   audio.onerror = () => audioFailed();
   play.onclick = () => {
+    document.getElementById("leftnote").hidden = true;
     if (audio.paused) audio.play().catch(audioFailed);
     else audio.pause();
   };
@@ -388,6 +408,7 @@ function showTriad(triad) {
         </div>`).join("")}
     </div>
     <p class="note" id="listen">${tx("listen_first")}</p>
+    <p class="note" id="leftnote" hidden></p>
     <div class="panel" id="form" hidden>
       <div class="labels">
         <label class="block" for="sim" id="sim-label"></label>
@@ -400,12 +421,20 @@ function showTriad(triad) {
     <div class="actions">
       <button class="primary" id="submit" disabled>${tx("submit")}</button>
       <span class="spacer"></span>
-      <button id="nodiff" disabled>${tx("no_difference")}</button>
+      <button id="nodiff" hidden>${tx("no_difference")}</button>
     </div>`);
 
   const players = {};
   const heard = new Set();
   const selected = [];
+  active.clear();
+  let allHeardAt = null;            // when the third clip was heard to the end
+  const delayMs = 1000 * (S.cfg.interface.no_difference_delay_s || 0);
+  const nodiffTimer = setInterval(() => {
+    const btn = document.getElementById("nodiff");
+    if (!btn) return clearInterval(nodiffTimer);       // screen has changed
+    if (allHeardAt !== null && performance.now() - allHeardAt >= delayMs) { btn.hidden = false; clearInterval(nodiffTimer); }
+  }, 1000);
 
   const logEvent = (pos, event) => api("play", { method: "POST", body: {
     participant_id: S.pid, triad_id: triad.triad_id, position: pos, event,
@@ -422,7 +451,8 @@ function showTriad(triad) {
     const allHeard = !S.cfg.require_full_play || heard.size === 3;
     document.getElementById("listen").hidden = allHeard;
     app.querySelectorAll(".selbtn").forEach((b) => { b.disabled = !allHeard; });
-    document.getElementById("nodiff").disabled = !allHeard;
+    if (allHeard && allHeardAt === null) allHeardAt = performance.now();
+    if (allHeard && delayMs === 0) document.getElementById("nodiff").hidden = false;
     const ready = allHeard && selected.length === 2;
     document.getElementById("form").hidden = !ready;
     document.getElementById("submit").disabled = !ready;
@@ -449,8 +479,10 @@ function showTriad(triad) {
     const bar = el.querySelector(".bar > span");
     const status = el.querySelector(".status");
     players[pos] = { audio };
+    active.add(audio);
     audio.onerror = () => { setText(status, "audio_error"); status.classList.add("err"); };
     btn.onclick = () => {
+      document.getElementById("leftnote").hidden = true;
       if (audio.paused) {
         pauseOthers(pos);
         audio.play().catch(() => { setText(status, "audio_error"); status.classList.add("err"); });
@@ -487,6 +519,7 @@ function showTriad(triad) {
     stopAll();
     document.getElementById("submit").disabled = true;
     document.getElementById("nodiff").disabled = true;
+    clearInterval(nodiffTimer);
     render(`<p class="muted"><span class="spinner"></span>${tx("saving")}</p>`);
     try {
       const res = await api("response", { method: "POST", body: {

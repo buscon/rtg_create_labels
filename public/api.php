@@ -155,6 +155,20 @@ function vector($v, int $max = 2048): ?array {
 $route = $_GET['r'] ?? '';
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
+// group settings ([group.NAME] in config.ini): by the code in the link, or by the participant's code
+$groupCode = isset($_GET['c']) ? (string)$_GET['c'] : null;
+if ($groupCode === null) {
+    $raw = $method === 'POST' ? (json_decode(file_get_contents('php://input') ?: '{}', true) ?: []) : [];
+    $pidForGroup = (string)($_GET['pid'] ?? ($raw['participant_id'] ?? ''));
+    if (isset($raw['access_code']) && is_string($raw['access_code'])) $groupCode = $raw['access_code'];
+    elseif ($pidForGroup !== '') {
+        $st = $pdo->prepare('SELECT access_code FROM participants WHERE participant_id = ?');
+        $st->execute([$pidForGroup]);
+        $groupCode = $st->fetchColumn() ?: null;
+    }
+}
+$cfg = rgt_apply_group($cfg, $groupCode);
+
 switch ("$method $route") {
 
 case 'GET config':
