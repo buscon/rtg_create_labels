@@ -311,9 +311,10 @@ case 'POST response':
                 $es ? json_encode($es) : null, $ec ? json_encode($ec) : null, rgt_now()]);
             $cid = (int)$pdo->lastInsertId();
         }
-        $pdo->prepare('INSERT INTO responses (triad_id, pair_a, pair_b, odd_one, no_difference, construct_id, rt_ms, submitted_at)
-            VALUES (?,?,?,?,?,?,?,?)')->execute([$t['triad_id'], $pairIds[0], $pairIds[1], $odd, (int)$noDiff, $cid,
-            isset($b['rt_ms']) ? (int)$b['rt_ms'] : null, rgt_now()]);
+        $lang = in_array($b['language'] ?? null, $cfg['study']['languages'], true) ? $b['language'] : null;
+        $pdo->prepare('INSERT INTO responses (triad_id, pair_a, pair_b, odd_one, no_difference, construct_id, rt_ms, language, submitted_at)
+            VALUES (?,?,?,?,?,?,?,?,?)')->execute([$t['triad_id'], $pairIds[0], $pairIds[1], $odd, (int)$noDiff, $cid,
+            isset($b['rt_ms']) ? (int)$b['rt_ms'] : null, $lang, rgt_now()]);
         $reason = null;
         if (!$isPractice) {
             $st = $cfg['stopping'];

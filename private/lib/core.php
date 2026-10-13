@@ -65,6 +65,17 @@ function rgt_rollback(PDO $pdo): void {
     } catch (Throwable $e) { /* nothing to roll back */ }
 }
 
+function rgt_ensure_column(PDO $pdo, string $table, string $column, string $type): void {
+    if (rgt_is_sqlite($pdo)) {
+        $cols = array_column($pdo->query("PRAGMA table_info($table)")->fetchAll(), 'name');
+    } else {
+        $cols = $pdo->query("SHOW COLUMNS FROM $table")->fetchAll(PDO::FETCH_COLUMN);
+    }
+    if (!in_array($column, $cols, true)) {
+        $pdo->exec("ALTER TABLE $table ADD COLUMN $column $type");
+    }
+}
+
 /** Create tables and register the clips from the elements file. Safe to run repeatedly. */
 function rgt_init_db(array $cfg): void {
     $pdo = rgt_db($cfg);
@@ -73,9 +84,14 @@ function rgt_init_db(array $cfg): void {
     foreach (array_filter(array_map('trim', explode(';', $schema))) as $stmt) {
         $pdo->exec($stmt);
     }
+    // columns added after the first version: add them to existing databases
+    rgt_ensure_column($pdo, 'responses', 'language', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(10) NULL');
+
     rgt_begin($pdo);
     try {
         $get = $pdo->prepare('SELECT filename FROM elements WHERE element_id = ?');
+        // the clip set may still change while no session has been started
+        $started = (int)$pdo->query('SELECT COUNT(*) FROM participants')->fetchColumn() > 0;
         foreach (rgt_elements($cfg) as $e) {
             $get->execute([$e['element_id']]);
             $row = $get->fetch();
@@ -84,12 +100,38 @@ function rgt_init_db(array $cfg): void {
                 $pdo->prepare('INSERT INTO elements (element_id, filename, category, is_practice) VALUES (?,?,?,0)')
                     ->execute([$e['element_id'], $e['filename'], $e['category']]);
             } elseif ($row['filename'] !== $e['filename']) {
-                throw new RuntimeException("element {$e['element_id']} is '{$row['filename']}' in the database but "
-                    . "'{$e['filename']}' in the elements file. Use a new database for a new clip set.");
+                if ($started) {
+                    throw new RuntimeException("element {$e['element_id']} is '{$row['filename']}' in the database but "
+                        . "'{$e['filename']}' in the elements file, and sessions already exist. "
+                        . "Use a new (empty) database for a new clip set (setup.php --reset-data).");
+                }
+                $pdo->prepare('UPDATE elements SET filename = ?, category = ? WHERE element_id = ?')
+                    ->execute([$e['filename'], $e['category'], $e['element_id']]);
             } else {
                 $pdo->prepare('UPDATE elements SET category = ? WHERE element_id = ?')
                     ->execute([$e['category'], $e['element_id']]);
             }
+        }
+        // clips that are no longer in the elements file (e.g. 10 -> 8 clips)
+        $ids = array_map(fn($e) => (int)$e['element_id'], rgt_elements($cfg));
+        $stale = array_values(array_filter(
+            array_map('intval', $pdo->query('SELECT element_id FROM elements WHERE is_practice = 0')->fetchAll(PDO::FETCH_COLUMN)),
+            fn($id) => !in_array($id, $ids, true)));
+        if ($stale) {
+            if ($started) {
+                throw new RuntimeException('the database contains clips (element_id ' . implode(', ', $stale)
+                    . ') that are not in the elements file, and sessions already exist. '
+                    . 'Use a new (empty) database for a new clip set (setup.php --reset-data).');
+            }
+            $pdo->prepare('DELETE FROM elements WHERE is_practice = 0 AND element_id IN ('
+                . implode(',', array_fill(0, count($stale), '?')) . ')')->execute($stale);
+        }
+        if (!$started) {
+            // practice clips that are no longer configured
+            $keep = $cfg['stimuli']['practice_clips'];
+            $old = $pdo->query('SELECT element_id, filename FROM elements WHERE is_practice = 1')->fetchAll();
+            $del = $pdo->prepare('DELETE FROM elements WHERE element_id = ?');
+            foreach ($old as $row) if (!in_array($row['filename'], $keep, true)) $del->execute([$row['element_id']]);
         }
         $find = $pdo->prepare('SELECT 1 FROM elements WHERE filename = ?');
         foreach ($cfg['stimuli']['practice_clips'] as $name) {

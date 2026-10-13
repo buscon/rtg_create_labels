@@ -4,7 +4,6 @@
 export const TEXT = {
   de: {
     title: "Klangvergleich",
-    lang_label: "Sprache",
     start: "Weiter",
     next: "Weiter",
     loading: "Wird geladen …",
@@ -15,7 +14,7 @@ export const TEXT = {
     mobile_text: "Diese Studie kann nur an einem Laptop oder Desktop-Computer mit Kopfhörern durchgeführt werden. Bitte öffnen Sie den Link dort erneut.",
 
     welcome_title: "Willkommen",
-    welcome_text: "[PLACEHOLDER] In dieser Studie hören Sie kurze Klangaufnahmen und vergleichen sie miteinander. Die Teilnahme dauert etwa 30 bis 55 Minuten. Sie benötigen Kopfhörer und eine ruhige Umgebung.",
+    welcome_text: "[PLACEHOLDER] In dieser Studie hören Sie kurze Klangaufnahmen und vergleichen sie miteinander. Die Teilnahme dauert etwa 25 bis 40 Minuten. Sie benötigen Kopfhörer und eine ruhige Umgebung.",
     consent_text: "[PLACEHOLDER – genehmigte Teilnehmendeninformation und Datenschutzhinweise einfügen.] Ihre Antworten werden pseudonymisiert gespeichert. Die Teilnahme ist freiwillig und kann jederzeit ohne Angabe von Gründen beendet werden.",
     consent_check: "Ich habe die Informationen gelesen und bin mit der Teilnahme einverstanden.",
     resume_title: "Fortsetzen",
@@ -56,6 +55,7 @@ export const TEXT = {
     practice_label: "Übung",
     triad_label: "Vergleich {n}",
     heard: "vollständig gehört",
+    heard_ok: "✓ vollständig gehört",
     choose_two: "Wählen Sie die zwei Klänge, die sich ähneln:",
     select: "Auswählen",
     selected: "Ausgewählt",
@@ -71,6 +71,7 @@ export const TEXT = {
 
     end_title: "Vielen Dank!",
     end_text: "Sie haben die Aufgabe abgeschlossen. Ihre Antworten sind gespeichert. Sie können das Fenster jetzt schließen.",
+    credits: "Herkunft der Tonaufnahmen",
 
     iv_title: "Für die Interviewerin / den Interviewer",
     iv_answer: "Antwort",
@@ -87,7 +88,6 @@ export const TEXT = {
 
   en: {
     title: "Sound comparison",
-    lang_label: "Language",
     start: "Continue",
     next: "Continue",
     loading: "Loading …",
@@ -98,7 +98,7 @@ export const TEXT = {
     mobile_text: "This study can only be done on a laptop or desktop computer with headphones. Please open the link again there.",
 
     welcome_title: "Welcome",
-    welcome_text: "[PLACEHOLDER] In this study you will listen to short sound recordings and compare them. It takes about 30 to 55 minutes. You need headphones and a quiet place.",
+    welcome_text: "[PLACEHOLDER] In this study you will listen to short sound recordings and compare them. It takes about 25 to 40 minutes. You need headphones and a quiet place.",
     consent_text: "[PLACEHOLDER – insert the approved participant information and data protection notice.] Your answers are stored under a pseudonym. Participation is voluntary and you can stop at any time without giving a reason.",
     consent_check: "I have read the information and agree to take part.",
     resume_title: "Continue",
@@ -139,6 +139,7 @@ export const TEXT = {
     practice_label: "Practice",
     triad_label: "Comparison {n}",
     heard: "heard completely",
+    heard_ok: "✓ heard completely",
     choose_two: "Choose the two sounds that are alike:",
     select: "Select",
     selected: "Selected",
@@ -154,6 +155,7 @@ export const TEXT = {
 
     end_title: "Thank you!",
     end_text: "You have completed the task. Your answers are saved. You can close this window now.",
+    credits: "Sources of the sound recordings",
 
     iv_title: "For the interviewer",
     iv_answer: "Answer",

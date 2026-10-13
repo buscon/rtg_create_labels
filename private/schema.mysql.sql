@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS responses (
     no_difference  TINYINT NOT NULL DEFAULT 0,
     construct_id   INT NULL,
     rt_ms          INT NULL,
+    language       VARCHAR(10) NULL,           -- interface language when the answer was given
     submitted_at   VARCHAR(40) NOT NULL,
     FOREIGN KEY (triad_id) REFERENCES triads(triad_id),
     FOREIGN KEY (construct_id) REFERENCES constructs(construct_id)

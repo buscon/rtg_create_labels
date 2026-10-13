@@ -1,0 +1,5 @@
+# Stimulus preparation scripts (stimuli/)
+numpy>=1.24
+scipy>=1.10
+soundfile>=0.12
+scikit-maad>=1.4

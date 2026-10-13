@@ -1,11 +1,9 @@
 element_id,filename,category
-1,clip_01.wav,natural
-2,clip_02.wav,natural
-3,clip_03.wav,natural
-4,clip_04.wav,natural
-5,clip_05.wav,mixed
-6,clip_06.wav,mixed
-7,clip_07.wav,mixed
-8,clip_08.wav,urban
-9,clip_09.wav,urban
-10,clip_10.wav,urban
+1,clip_01.flac,calm-pleasant
+2,clip_02.flac,pleasant
+3,clip_03.flac,vibrant
+4,clip_04.flac,eventful
+5,clip_05.flac,chaotic
+6,clip_06.flac,chaotic (crowd)
+7,clip_07.flac,monotonous
+8,clip_08.flac,uneventful

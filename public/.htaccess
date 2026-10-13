@@ -24,6 +24,9 @@ RedirectMatch 404 /\.git
 AddType application/wasm .wasm
 AddType text/javascript .mjs
 AddType application/octet-stream .onnx
+# Audio (with nosniff the type must be right)
+AddType audio/flac .flac
+AddType audio/wav .wav
 
 <IfModule mod_headers.c>
   Header always set X-Content-Type-Options "nosniff"

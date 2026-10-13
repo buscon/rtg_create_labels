@@ -25,6 +25,29 @@ const t = (key, vars = {}) =>
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) =>
   ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 
+// Text that follows the language switch: rendered with data-i18n, so relabel()
+// can translate the current screen in place without re-rendering it (which
+// would lose audio progress or typed text).
+const tx = (key, vars = {}) =>
+  `<span data-i18n="${key}" data-vars="${esc(JSON.stringify(vars))}">${esc(t(key, vars))}</span>`;
+
+function setText(el, key, vars = {}) {
+  el.dataset.i18n = key;
+  el.dataset.vars = JSON.stringify(vars);
+  el.textContent = t(key, vars);
+}
+
+function relabel() {
+  app.querySelectorAll("[data-i18n]").forEach((el) => {
+    el.textContent = t(el.dataset.i18n, JSON.parse(el.dataset.vars || "{}"));
+  });
+  const prog = document.getElementById("progress");
+  if (prog.dataset.i18n) prog.textContent = t(prog.dataset.i18n, JSON.parse(prog.dataset.vars || "{}"));
+  app.querySelectorAll("[data-prompt]").forEach((el) => { el.textContent = S.cfg.prompt[S.lang]; });
+  const ivq = document.getElementById("iv-questions");
+  if (ivq) ivq.innerHTML = (S.cfg.followup_questions[S.lang] || []).map((q) => `<li>${esc(q)}</li>`).join("");
+}
+
 const store = {
   get(k) { try { return window.localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { window.localStorage.setItem(k, v); } catch { /* ignore */ } },
@@ -57,17 +80,48 @@ function render(html) {
 
 function showError(e) {
   console.error(e);
-  render(`<div class="panel"><h1>${esc(t("title"))}</h1><p class="note">${esc(t("error"))}</p>
+  render(`<div class="panel"><h1>${tx("title")}</h1><p class="note">${tx("error")}</p>
     <p class="muted">${esc(e.message || "")}</p></div>`);
 }
 
-function setProgress(text) { document.getElementById("progress").textContent = text || ""; }
+function setProgress(key, vars = {}) {
+  const el = document.getElementById("progress");
+  if (!key) { delete el.dataset.i18n; el.textContent = ""; return; }
+  setText(el, key, vars);
+}
+
+const LANG_NAMES = { de: "Deutsch", en: "English" };
+
+/** Order: ?lang= in the link, earlier choice in this browser, browser language, configured default. */
+function initialLanguage() {
+  const ok = (l) => l && S.cfg.languages.includes(l);
+  const url = params.get("lang");
+  if (ok(url)) return url;
+  const saved = store.get("rgt_lang");
+  if (ok(saved)) return saved;
+  for (const l of navigator.languages || [navigator.language || ""]) {
+    const short = l.slice(0, 2).toLowerCase();
+    if (ok(short)) return short;
+  }
+  return S.cfg.default_language;
+}
 
 function applyLanguage() {
   document.documentElement.lang = S.lang;
   document.title = t("title");
   document.getElementById("brand").textContent = t("title");
-  document.getElementById("lang-label").textContent = t("lang_label");
+  document.querySelectorAll("#lang-switch button").forEach((b) => {
+    b.setAttribute("aria-pressed", b.dataset.lang === S.lang ? "true" : "false");
+  });
+}
+
+/** Switch the language at any point; the current screen is translated in place. */
+function switchLanguage(lang) {
+  if (lang === S.lang) return;
+  S.lang = lang;
+  store.set("rgt_lang", lang);
+  applyLanguage();
+  relabel();
 }
 
 function isMobile() {
@@ -81,17 +135,16 @@ async function init() {
   try {
     S.cfg = await api("config");
   } catch (e) { return showError(e); }
-  const urlLang = params.get("lang");
-  S.lang = S.cfg.languages.includes(urlLang) ? urlLang : S.cfg.default_language;
-  const sel = document.getElementById("lang");
-  sel.innerHTML = S.cfg.languages.map((l) => `<option value="${l}">${l.toUpperCase()}</option>`).join("");
-  sel.value = S.lang;
-  sel.addEventListener("change", () => { S.lang = sel.value; applyLanguage(); showWelcome(); });
-  document.getElementById("lang-wrap").hidden = S.cfg.languages.length < 2;
+  S.lang = initialLanguage();
+  const sw = document.getElementById("lang-switch");
+  sw.innerHTML = S.cfg.languages.map((l) =>
+    `<button type="button" data-lang="${l}" lang="${l}">${esc(LANG_NAMES[l] || l.toUpperCase())}</button>`).join("");
+  sw.querySelectorAll("button").forEach((b) => { b.onclick = () => switchLanguage(b.dataset.lang); });
+  sw.hidden = S.cfg.languages.length < 2;
   applyLanguage();
 
   if (S.cfg.block_mobile && isMobile() && S.mode !== "interviewer") {
-    return render(`<div class="panel"><h1>${esc(t("mobile_title"))}</h1><p>${esc(t("mobile_text"))}</p></div>`);
+    return render(`<div class="panel"><h1>${tx("mobile_title")}</h1><p>${tx("mobile_text")}</p></div>`);
   }
 
   const saved = store.get("rgt_pid");
@@ -108,12 +161,11 @@ async function init() {
 }
 
 function showResume(pid, st) {
-  render(`<div class="panel"><h1>${esc(t("resume_title"))}</h1><p>${esc(t("resume_text"))}</p>
-    <div class="actions"><button class="primary" id="yes">${esc(t("resume_yes"))}</button>
-    <button id="no">${esc(t("resume_no"))}</button></div></div>`);
+  render(`<div class="panel"><h1>${tx("resume_title")}</h1><p>${tx("resume_text")}</p>
+    <div class="actions"><button class="primary" id="yes">${tx("resume_yes")}</button>
+    <button id="no">${tx("resume_no")}</button></div></div>`);
   document.getElementById("yes").onclick = () => {
-    S.pid = pid; S.lang = st.language; S.practiceDone = true; applyLanguage();
-    document.getElementById("lang-wrap").hidden = true;
+    S.pid = pid; S.practiceDone = true;
     startEmbedding();
     loadNext();
   };
@@ -122,15 +174,15 @@ function showResume(pid, st) {
 
 function showWelcome() {
   const iv = S.mode === "interviewer" ? `
-    <h2>${esc(t("interviewer_title"))}</h2><p class="muted">${esc(t("interviewer_text"))}</p>
-    <label class="block" for="pw">${esc(t("interviewer_password"))}</label>
+    <h2>${tx("interviewer_title")}</h2><p class="muted">${tx("interviewer_text")}</p>
+    <label class="block" for="pw">${tx("interviewer_password")}</label>
     <input type="password" id="pw" autocomplete="off">` : "";
-  render(`<div class="panel"><h1>${esc(t("welcome_title"))}</h1>
-    <p>${esc(t("welcome_text"))}</p><p>${esc(t("consent_text"))}</p>
-    <label class="check"><input type="checkbox" id="consent"> <span>${esc(t("consent_check"))}</span></label>
+  render(`<div class="panel"><h1>${tx("welcome_title")}</h1>
+    <p>${tx("welcome_text")}</p><p>${tx("consent_text")}</p>
+    <label class="check"><input type="checkbox" id="consent"> <span>${tx("consent_check")}</span></label>
     ${iv}
     <p class="note" id="msg" hidden></p>
-    <div class="actions"><button class="primary" id="go" disabled>${esc(t("start"))}</button></div></div>`);
+    <div class="actions"><button class="primary" id="go" disabled>${tx("start")}</button></div></div>`);
   const consent = document.getElementById("consent");
   const go = document.getElementById("go");
   consent.onchange = () => { go.disabled = !consent.checked; };
@@ -149,17 +201,17 @@ function startEmbedding() {
 }
 
 function showAbout() {
-  render(`<div class="panel"><h1>${esc(t("about_title"))}</h1>
-    <label class="block" for="hp">${esc(t("headphones_q"))}</label>
+  render(`<div class="panel"><h1>${tx("about_title")}</h1>
+    <label class="block" for="hp">${tx("headphones_q")}</label>
     <input type="text" id="hp" maxlength="200" autocomplete="off">
-    <label class="block">${esc(t("hearing_q"))}</label>
+    <label class="block">${tx("hearing_q")}</label>
     <div class="radios">
-      <label><input type="radio" name="hear" value="no"> ${esc(t("hearing_no"))}</label>
-      <label><input type="radio" name="hear" value="yes"> ${esc(t("hearing_yes"))}</label>
-      <label><input type="radio" name="hear" value="na"> ${esc(t("hearing_na"))}</label>
+      <label><input type="radio" name="hear" value="no"> ${tx("hearing_no")}</label>
+      <label><input type="radio" name="hear" value="yes"> ${tx("hearing_yes")}</label>
+      <label><input type="radio" name="hear" value="na"> ${tx("hearing_na")}</label>
     </div>
     <p class="note" id="msg" hidden></p>
-    <div class="actions"><button class="primary" id="go">${esc(t("next"))}</button></div></div>`);
+    <div class="actions"><button class="primary" id="go">${tx("next")}</button></div></div>`);
   document.getElementById("go").onclick = async (ev) => {
     ev.target.disabled = true;
     const hear = app.querySelector("input[name=hear]:checked");
@@ -172,12 +224,11 @@ function showAbout() {
       S.pid = res.participant_id;
       S.hpTrials = res.headphone_trials || [];
       if (S.mode === "online") store.set("rgt_pid", S.pid);
-      document.getElementById("lang-wrap").hidden = true;
       showVolume();
     } catch (e) {
       if (e.status === 403) {
         const m = document.getElementById("msg");
-        m.textContent = t("interviewer_wrong"); m.hidden = false;
+        setText(m, "interviewer_wrong"); m.hidden = false;
         S.token = null;
         setTimeout(showWelcome, 1500);
       } else showError(e);
@@ -188,16 +239,16 @@ function showAbout() {
 // ------------------------------------------------------------------ volume and headphone check
 
 function showVolume() {
-  render(`<div class="panel"><h1>${esc(t("volume_title"))}</h1><p>${esc(t("volume_text"))}</p>
-    <div class="actions"><button id="play">${esc(t("play"))}</button>
-    <span class="spacer"></span><button class="primary" id="go" disabled>${esc(t("volume_done"))}</button></div></div>`);
+  render(`<div class="panel"><h1>${tx("volume_title")}</h1><p>${tx("volume_text")}</p>
+    <div class="actions"><button id="play">${tx("play")}</button>
+    <span class="spacer"></span><button class="primary" id="go" disabled>${tx("volume_done")}</button></div></div>`);
   const audio = new Audio(S.cfg.calibration_url);
   audio.loop = true;
   const play = document.getElementById("play");
   const go = document.getElementById("go");
   play.onclick = () => {
-    if (audio.paused) { audio.play(); play.textContent = t("pause"); go.disabled = false; }
-    else { audio.pause(); play.textContent = t("play"); }
+    if (audio.paused) { audio.play(); setText(play, "pause"); go.disabled = false; }
+    else { audio.pause(); setText(play, "play"); }
   };
   go.onclick = () => {
     audio.pause();
@@ -207,10 +258,10 @@ function showVolume() {
 
 function showHeadphone(i, answers) {
   const trial = S.hpTrials[i];
-  render(`<div class="panel"><h1>${esc(t("hp_title"))}</h1><p>${esc(t("hp_text"))}</p>
-    <p class="muted">${esc(t("hp_trial", { n: i + 1, total: S.hpTrials.length }))}</p>
-    <div class="actions"><button class="primary" id="play">${esc(t("play"))}</button></div>
-    <p id="which" hidden>${esc(t("hp_which"))}</p>
+  render(`<div class="panel"><h1>${tx("hp_title")}</h1><p>${tx("hp_text")}</p>
+    <p class="muted">${tx("hp_trial", { n: i + 1, total: S.hpTrials.length })}</p>
+    <div class="actions"><button class="primary" id="play">${tx("play")}</button></div>
+    <p id="which" hidden>${tx("hp_which")}</p>
     <div class="hp-choices" id="choices" hidden>
       ${[1, 2, 3].map((n) => `<button data-n="${n}">${n}</button>`).join("")}
     </div></div>`);
@@ -230,7 +281,7 @@ function showHeadphone(i, answers) {
         if (res.passed) showInstructions();
         else {
           store.del("rgt_pid");
-          render(`<div class="panel"><h1>${esc(t("hp_fail_title"))}</h1><p>${esc(t("hp_fail_text"))}</p></div>`);
+          render(`<div class="panel"><h1>${tx("hp_fail_title")}</h1><p>${tx("hp_fail_text")}</p></div>`);
         }
       } catch (e) { showError(e); }
     };
@@ -238,16 +289,16 @@ function showHeadphone(i, answers) {
 }
 
 function showInstructions() {
-  render(`<div class="panel"><h1>${esc(t("instr_title"))}</h1><p>${esc(t("instr_text"))}</p>
-    <p class="example">${esc(t("instr_example"))}</p><p>${esc(t("instr_practice"))}</p>
-    <div class="actions"><button class="primary" id="go">${esc(t("start"))}</button></div></div>`);
+  render(`<div class="panel"><h1>${tx("instr_title")}</h1><p>${tx("instr_text")}</p>
+    <p class="example">${tx("instr_example")}</p><p>${tx("instr_practice")}</p>
+    <div class="actions"><button class="primary" id="go">${tx("start")}</button></div></div>`);
   document.getElementById("go").onclick = () => loadNext();
 }
 
 // ------------------------------------------------------------------ triads
 
 async function loadNext() {
-  render(`<p class="muted"><span class="spinner"></span>${esc(t("loading"))}</p>`);
+  render(`<p class="muted"><span class="spinner"></span>${tx("loading")}</p>`);
   try {
     const res = await api("next", { query: { pid: S.pid } });
     if (res.done) return showEnd();
@@ -260,29 +311,29 @@ async function loadNext() {
 }
 
 function showAfterPractice(triad) {
-  render(`<div class="panel"><h1>${esc(t("after_practice_title"))}</h1><p>${esc(t("after_practice_text"))}</p>
-    <div class="actions"><button class="primary" id="go">${esc(t("start"))}</button></div></div>`);
+  render(`<div class="panel"><h1>${tx("after_practice_title")}</h1><p>${tx("after_practice_text")}</p>
+    <div class="actions"><button class="primary" id="go">${tx("start")}</button></div></div>`);
   document.getElementById("go").onclick = () => showTriad(triad);
 }
 
 function showTriad(triad) {
   const shownAt = performance.now();
   const L = S.cfg.labels;
-  const heading = triad.is_practice ? t("practice_label") : t("triad_label", { n: triad.n_done + 1 });
-  setProgress(heading);
-  render(`<h1>${esc(heading)}</h1>
-    <p>${esc(S.cfg.prompt[S.lang])}</p>
+  const [hKey, hVars] = triad.is_practice ? ["practice_label", {}] : ["triad_label", { n: triad.n_done + 1 }];
+  setProgress(hKey, hVars);
+  render(`<h1>${tx(hKey, hVars)}</h1>
+    <p data-prompt>${esc(S.cfg.prompt[S.lang])}</p>
     <div class="clips">
       ${triad.clips.map((c) => `
         <div class="clip" data-pos="${c.position}">
           <div class="letter">${c.position}</div>
-          <button class="playbtn">${esc(t("play"))}</button>
+          <button class="playbtn">${tx("play")}</button>
           <div class="bar"><span></span></div>
           <div class="status"></div>
-          <button class="selbtn" disabled>${esc(t("select"))}</button>
+          <button class="selbtn" disabled>${tx("select")}</button>
         </div>`).join("")}
     </div>
-    <p class="note" id="listen">${esc(t("listen_first"))}</p>
+    <p class="note" id="listen">${tx("listen_first")}</p>
     <div class="panel" id="form" hidden>
       <div class="labels">
         <label class="block" for="sim" id="sim-label"></label>
@@ -293,9 +344,9 @@ function showTriad(triad) {
       <p class="note" id="msg" hidden></p>
     </div>
     <div class="actions">
-      <button class="primary" id="submit" disabled>${esc(t("submit"))}</button>
+      <button class="primary" id="submit" disabled>${tx("submit")}</button>
       <span class="spacer"></span>
-      <button id="nodiff" disabled>${esc(t("no_difference"))}</button>
+      <button id="nodiff" disabled>${tx("no_difference")}</button>
     </div>`);
 
   const players = {};
@@ -324,13 +375,13 @@ function showTriad(triad) {
     if (ready) {
       const odd = ["A", "B", "C"].find((p) => !selected.includes(p));
       const [a, b] = [...selected].sort();
-      document.getElementById("sim-label").textContent = t("sim_label", { a, b });
-      document.getElementById("con-label").textContent = t("con_label", { c: odd });
+      setText(document.getElementById("sim-label"), "sim_label", { a, b });
+      setText(document.getElementById("con-label"), "con_label", { c: odd });
     }
     app.querySelectorAll(".clip").forEach((el) => {
       const sel = selected.includes(el.dataset.pos);
       el.classList.toggle("selected", sel);
-      el.querySelector(".selbtn").textContent = sel ? t("selected") : t("select");
+      setText(el.querySelector(".selbtn"), sel ? "selected" : "select");
       el.querySelector(".selbtn").setAttribute("aria-pressed", sel ? "true" : "false");
     });
   };
@@ -347,19 +398,19 @@ function showTriad(triad) {
     btn.onclick = () => {
       if (audio.paused) { pauseOthers(pos); audio.play(); } else audio.pause();
     };
-    audio.onplay = () => { btn.textContent = t("pause"); logEvent(pos, "play").catch(() => {}); };
+    audio.onplay = () => { setText(btn, "pause"); logEvent(pos, "play").catch(() => {}); };
     audio.onpause = () => {
-      btn.textContent = t("play");
+      setText(btn, "play");
       if (!audio.ended) logEvent(pos, "pause").catch(() => {});
     };
     audio.ontimeupdate = () => {
       if (audio.duration) bar.style.width = `${(100 * audio.currentTime) / audio.duration}%`;
     };
     audio.onended = async () => {
-      btn.textContent = t("play");
+      setText(btn, "play");
       try { await logEvent(pos, "ended"); } catch (e) { return showError(e); }
       heard.add(pos);
-      status.textContent = `✓ ${t("heard")}`;
+      setText(status, "heard_ok");
       status.classList.add("ok");
       if (!S.cfg.allow_replay) btn.disabled = true;
       updateState();
@@ -378,10 +429,11 @@ function showTriad(triad) {
     stopAll();
     document.getElementById("submit").disabled = true;
     document.getElementById("nodiff").disabled = true;
-    render(`<p class="muted"><span class="spinner"></span>${esc(t("saving"))}</p>`);
+    render(`<p class="muted"><span class="spinner"></span>${tx("saving")}</p>`);
     try {
       const res = await api("response", { method: "POST", body: {
-        participant_id: S.pid, triad_id: triad.triad_id, rt_ms: Math.round(performance.now() - shownAt), ...payload,
+        participant_id: S.pid, triad_id: triad.triad_id, rt_ms: Math.round(performance.now() - shownAt),
+        language: S.lang, ...payload,
       } });
       if (S.mode === "interviewer" && res.construct_id && !triad.is_practice) {
         return showInterviewerPanel(res, poles);
@@ -396,13 +448,13 @@ function showTriad(triad) {
     const con = document.getElementById("con").value.trim();
     const words = (s) => s.split(/\s+/).filter(Boolean).length;
     if (words(sim) < L.min_words || words(con) < L.min_words) {
-      const m = document.getElementById("msg"); m.textContent = t("too_short"); m.hidden = false;
+      const m = document.getElementById("msg"); setText(m, "too_short"); m.hidden = false;
       return;
     }
     let embedding = null;
     if (S.cfg.similarity.backend === "embedding" && !triad.is_practice) {
       document.getElementById("submit").disabled = true;
-      document.getElementById("submit").innerHTML = `<span class="spinner"></span>${esc(t("saving"))}`;
+      document.getElementById("submit").innerHTML = `<span class="spinner"></span>${tx("saving")}`;
       embedding = await embedPoles(sim, con, S.cfg.similarity.model, S.cfg.similarity.wait_s);
     }
     send({ pair: [...selected], similarity_pole: sim, contrast_pole: con, no_difference: false, embedding },
@@ -418,28 +470,28 @@ function showInterviewerPanel(res, poles) {
   const qs = (S.cfg.followup_questions[S.lang] || []).map((q) => `<li>${esc(q)}</li>`).join("");
   const earlier = (res.earlier_constructs || []).map((c) =>
     `<option value="${c.construct_id}">${esc(c.similarity_pole)} ↔ ${esc(c.contrast_pole)}</option>`).join("");
-  render(`<div class="panel iv"><h1>${esc(t("iv_title"))}</h1>
-    <p class="muted">${esc(t("iv_answer"))}:</p>
+  render(`<div class="panel iv"><h1>${tx("iv_title")}</h1>
+    <p class="muted">${tx("iv_answer")}:</p>
     <p class="answer">${esc(poles.sim)} ↔ ${esc(poles.con)}</p>
-    ${qs ? `<p class="muted">${esc(t("iv_questions"))}</p><ul>${qs}</ul>` : ""}
-    <label class="block" for="rs">${esc(t("iv_rev_sim"))}</label><input type="text" id="rs" maxlength="300">
-    <label class="block" for="rc">${esc(t("iv_rev_con"))}</label><input type="text" id="rc" maxlength="300">
-    <label class="block">${esc(t("iv_judgement"))}</label>
+    ${qs ? `<p class="muted">${tx("iv_questions")}</p><ul id="iv-questions">${qs}</ul>` : ""}
+    <label class="block" for="rs">${tx("iv_rev_sim")}</label><input type="text" id="rs" maxlength="300">
+    <label class="block" for="rc">${tx("iv_rev_con")}</label><input type="text" id="rc" maxlength="300">
+    <label class="block">${tx("iv_judgement")}</label>
     <div class="radios">
-      <label><input type="radio" name="j" value="new"> ${esc(t("iv_new"))}</label>
-      ${earlier ? `<label><input type="radio" name="j" value="same"> ${esc(t("iv_same"))}</label>` : ""}
+      <label><input type="radio" name="j" value="new"> ${tx("iv_new")}</label>
+      ${earlier ? `<label><input type="radio" name="j" value="same"> ${tx("iv_same")}</label>` : ""}
     </div>
     ${earlier ? `<select id="same" disabled>${earlier}</select>` : ""}
-    <label class="block" for="note">${esc(t("iv_note"))}</label><textarea id="note" rows="2" maxlength="2000"></textarea>
+    <label class="block" for="note">${tx("iv_note")}</label><textarea id="note" rows="2" maxlength="2000"></textarea>
     <p class="note" id="msg" hidden></p>
-    <div class="actions"><button class="primary" id="go">${esc(t("iv_continue"))}</button></div></div>`);
+    <div class="actions"><button class="primary" id="go">${tx("iv_continue")}</button></div></div>`);
   const sameSel = document.getElementById("same");
   app.querySelectorAll("input[name=j]").forEach((r) => {
     r.onchange = () => { if (sameSel) sameSel.disabled = r.value !== "same" || !r.checked; };
   });
   document.getElementById("go").onclick = async (ev) => {
     const j = app.querySelector("input[name=j]:checked");
-    if (!j) { const m = document.getElementById("msg"); m.textContent = t("iv_choose"); m.hidden = false; return; }
+    if (!j) { const m = document.getElementById("msg"); setText(m, "iv_choose"); m.hidden = false; return; }
     ev.target.disabled = true;
     try {
       await api("judgement", { method: "POST", body: {
@@ -456,8 +508,13 @@ function showInterviewerPanel(res, poles) {
 
 function showEnd() {
   store.del("rgt_pid");
-  setProgress("");
-  render(`<div class="panel"><h1>${esc(t("end_title"))}</h1><p>${esc(t("end_text"))}</p></div>`);
+  setProgress(null);
+  render(`<div class="panel"><h1>${tx("end_title")}</h1><p>${tx("end_text")}</p>
+    <p class="muted" id="credits" hidden><a href="credits.html" target="_blank" rel="noopener">${tx("credits")}</a></p></div>`);
+  // credits for the recordings (CC BY), shown only after the task so they cannot bias the answers
+  fetch("credits.html", { method: "HEAD", cache: "no-store" })
+    .then((r) => { if (r.ok) document.getElementById("credits").hidden = false; })
+    .catch(() => {});
 }
 
 init();

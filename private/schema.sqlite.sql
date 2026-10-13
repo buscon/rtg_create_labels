@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS participants (
     participant_id     TEXT PRIMARY KEY,
     mode               TEXT NOT NULL,      -- 'online' | 'interviewer'
     invited_mode       TEXT,               -- from the invitation link (?invited=in_person|online)
-    language           TEXT NOT NULL,
+    language           TEXT NOT NULL,      -- language at the start; see responses.language for later switches
     started_at         TEXT NOT NULL,
     triads_started_at  TEXT,               -- first real triad shown; the time limit counts from here
     finished_at        TEXT,
@@ -67,6 +67,7 @@ CREATE TABLE IF NOT EXISTS responses (
     no_difference  INTEGER NOT NULL DEFAULT 0,
     construct_id   INTEGER REFERENCES constructs(construct_id),
     rt_ms          INTEGER,
+    language       TEXT,                       -- interface language when the answer was given
     submitted_at   TEXT NOT NULL
 );
 

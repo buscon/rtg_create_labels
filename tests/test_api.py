@@ -234,6 +234,13 @@ def test_text_fallback_without_embedding(server):
     assert row[0] == "text" and row[1] > 0.85 and row[2] == 0
 
 
+def n_triads_and_clips() -> tuple[int, int]:
+    with open(REPO / "private" / "data" / "triad_set.csv", newline="") as f:
+        triads = list(csv.DictReader(f))
+    clips = {int(r[k]) for r in triads for k in ("clip_a", "clip_b", "clip_c")}
+    return len(triads), len(clips)
+
+
 def test_no_difference_counts_and_max_triads(server):
     pid = new_session(server)
     answer(server, pid, "p", "q")
@@ -247,7 +254,7 @@ def test_no_difference_counts_and_max_triads(server):
         else:
             _, r = answer(server, pid, "", "", nodiff=True)
         done = r["done"]
-    assert n == 17 and r["stop_reason"] == "max_triads"
+    assert n == n_triads_and_clips()[0] and r["stop_reason"] == "max_triads"
 
 
 def test_each_session_covers_all_pairs(server):
@@ -255,9 +262,10 @@ def test_each_session_covers_all_pairs(server):
     pid = new_session(server)
     rows = query(server, "SELECT pos_a, pos_b, pos_c FROM triads WHERE participant_id = ? AND order_index >= 1",
                  (pid,))
-    assert len(rows) == 17
+    n_triads, n_clips = n_triads_and_clips()
+    assert len(rows) == n_triads
     pairs = {frozenset(p) for r in rows for p in itertools.combinations(r, 2)}
-    assert len(pairs) == 45
+    assert len(pairs) == n_clips * (n_clips - 1) // 2
 
 
 def test_interviewer_mode(server):
@@ -294,3 +302,39 @@ def test_backup_dump_and_import(server, tmp_path):
     res = subprocess.run(["python3", str(REPO / "scripts" / "simulate_stopping.py"), "--db", str(db)],
                          capture_output=True, text=True, check=True)
     assert "participant" in res.stdout
+
+
+def test_answer_language_is_stored(server):
+    pid = new_session(server)
+    answer(server, pid, "p", "q")
+    code, n = call(server, "next", pid=pid)
+    triad = n["triad"]
+    play_all(server, pid, triad)
+    code, r = call(server, "response", "POST", {
+        "participant_id": pid, "triad_id": triad["triad_id"], "pair": ["A", "B"],
+        "similarity_pole": "calm", "contrast_pole": "busy", "language": "en"})
+    assert code == 200
+    assert query(server, "SELECT language FROM responses WHERE construct_id = ?", (r["construct_id"],))[0][0] == "en"
+    # unknown languages are not stored
+    code, n = call(server, "next", pid=pid)
+    play_all(server, pid, n["triad"])
+    code, r = call(server, "response", "POST", {
+        "participant_id": pid, "triad_id": n["triad"]["triad_id"], "no_difference": True, "language": "xx"})
+    assert code == 200
+    assert query(server, "SELECT language FROM responses WHERE triad_id = ?", (n["triad"]["triad_id"],))[0][0] is None
+
+
+def test_setup_adds_missing_column_to_old_database(server):
+    """Databases created before the language column existed get it added by setup.php."""
+    if server["driver"] == "sqlite":
+        pytest.skip("SQLite cannot drop columns in old versions; MySQL covers the migration path")
+    import pymysql
+    con = pymysql.connect(**server["mysql"])
+    with con.cursor() as c:
+        c.execute("ALTER TABLE responses DROP COLUMN language")
+    con.commit()
+    con.close()
+    subprocess.run(["php", str(server["root"] / "private" / "setup.php"), "--public-dir", str(server["root"] / "public")],
+                   check=True, capture_output=True)
+    cols = [r[0] for r in query(server, "SHOW COLUMNS FROM responses")]
+    assert "language" in cols

@@ -38,6 +38,7 @@ private/                    NOT reachable from the internet; on the server used 
   backup.php                CSV dump of all tables (backup and data download)
   db/, dumps/               SQLite file (local testing) and dumps     (not in git)
 scripts/                    Python tools for the researcher
+stimuli/                    selection and preparation of the audio clips (USotW + EigenScape, see stimuli/README.md)
 tests/                      automated tests of the API
 deploy.sh                   copies public/ from the server clone to the web folder (see INSTALL.md)
 hooks/post-merge            git hook on the server: runs deploy.sh after every git pull
@@ -64,7 +65,9 @@ php private/setup.php --set-token             # database + interviewer password
 php -S 127.0.0.1:8000 -t public               # then open http://127.0.0.1:8000
 ```
 
-Interviewer mode: `http://127.0.0.1:8000/?mode=interviewer`. English: add `?lang=en`.
+Interviewer mode: `http://127.0.0.1:8000/?mode=interviewer`.
+
+Language: German and English. Participants can switch at any time with the switch in the header; each answer is stored with the language it was given in (`responses.language`). A link can preset the language with `?lang=en` or `?lang=de`; otherwise the browser language decides.
 
 Run the tests: `pytest tests/` (SQLite). To test against MySQL/MariaDB as well, set `RGT_TEST_MYSQL=host:port:user:password:dbname` (a test database; it is emptied). Tested with MySQL 8.0 and MariaDB 10.11.
 

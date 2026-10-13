@@ -3,6 +3,8 @@
 //     php /path/to/private/setup.php --public-dir /path/to/httpdocs/rgt
 //         check requirements, validate config, create/update the database tables
 //     ... --set-token   additionally create a new interviewer password
+//     ... --reset-data  delete all sessions and answers (test data), e.g. before a new clip set;
+//                       asks for confirmation; make a backup first (php private/backup.php)
 // deploy.sh runs this automatically. Without --public-dir, the public/ folder
 // next to this folder is checked (repository layout, local testing).
 //
@@ -74,6 +76,20 @@ if (!extension_loaded($ext)) {
     exit(1);
 }
 line('ok', "extension $ext");
+if (in_array('--reset-data', $argv, true)) {
+    // delete ALL data (test sessions) so that a new clip set can be used; asks for confirmation
+    echo "This deletes ALL sessions, answers and clips from the database. Make a backup first\n"
+        . "(php private/backup.php). Type DELETE to continue: ";
+    $answer = trim((string)fgets(STDIN));
+    if ($answer !== 'DELETE') { line('note', 'nothing deleted'); exit(1); }
+    $pdo = rgt_db($cfg);
+    try { $pdo->exec('UPDATE constructs SET nearest_construct = NULL'); } catch (Throwable $e) {}
+    foreach (['ratings', 'play_events', 'interviewer_judgements', 'responses', 'constructs', 'triads',
+              'participants', 'elements'] as $table) {
+        try { $n = $pdo->exec("DELETE FROM $table"); line('ok', "deleted $n rows from $table"); }
+        catch (Throwable $e) { line('note', "$table: " . $e->getMessage()); }
+    }
+}
 try {
     rgt_init_db($cfg);
     if ($driver === 'sqlite') {

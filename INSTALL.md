@@ -59,7 +59,7 @@ These are not in git. Upload them with SFTP or the file manager:
 | `db_credentials.ini` | `~/rtg_create_labels/private/` | copy `db_credentials.example.ini` and fill in the database access data |
 | `headphone_manifest.csv` | `~/rtg_create_labels/private/` | `python scripts/make_headphone_stimuli.py` on your computer (written to `private/`) |
 | headphone-check sounds | `~/marcellolussana.net/httpdocs/rgt/audio/headphone/` | same script (written to `public/audio/headphone/`) |
-| clips and practice clips | `~/marcellolussana.net/httpdocs/rgt/audio/` | your recordings, file names as in `private/data/elements.csv` and `config.ini` |
+| clips and practice clips | `~/marcellolussana.net/httpdocs/rgt/audio/` | `python stimuli/isd_finalize.py` on your computer (written to `public/audio/*.flac`; file names as in `private/data/elements.csv` and `config.ini`) |
 | model and library (~160 MB) | `~/marcellolussana.net/httpdocs/rgt/models/` and `~/marcellolussana.net/httpdocs/rgt/static/vendor/` | `python scripts/fetch_assets.py` on your computer |
 
 These files are ignored by git, so `git pull` never changes or deletes them. **Do not run `git clean -x` in the clone on the server**: it deletes ignored files, including the database access data and the backups.
@@ -75,6 +75,20 @@ php ~/rtg_create_labels/private/setup.php --public-dir ~/marcellolussana.net/htt
 ```
 
 All lines should show `[ok]`. Write the password down; only a hash is stored on the server.
+
+## Changing the clip set
+
+The database stores the clips. As long as no session has been started, `setup.php` (run by every
+deploy) simply takes over a new clip set. Once sessions exist (also test sessions), it stops with
+`[FAIL] database: ... sessions already exist`. Test data can then be deleted:
+
+```bash
+php ~/rtg_create_labels/private/backup.php                      # CSV copy of everything first
+php ~/rtg_create_labels/private/setup.php --public-dir ~/marcellolussana.net/httpdocs/rgt --reset-data
+```
+
+The script asks you to type `DELETE`. It deletes all sessions, answers and clips, then registers
+the new clips. Never do this once real data collection has started; use a new database instead.
 
 ## 5. Updates
 

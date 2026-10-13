@@ -9,6 +9,8 @@ public/private_path.php
 export/
 
 # Audio and downloaded assets (created by scripts/, uploaded separately)
+stimuli/raw/
+stimuli/work/
 public/audio/*
 !public/audio/README.md
 public/models/

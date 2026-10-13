@@ -23,12 +23,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from rgtconf import db_path, load_config  # noqa: E402
 
 CONSTRUCTS_SQL = """
-SELECT c.construct_id, c.participant_id, p.mode, p.language, t.order_index, t.set_number,
+SELECT c.construct_id, c.participant_id, p.mode, p.language AS start_language, t.order_index, t.set_number,
        e1.filename AS pair_clip_1, e2.filename AS pair_clip_2, e3.filename AS odd_clip,
        c.similarity_pole, c.contrast_pole, c.auto_is_new, c.nearest_construct, c.similarity_score,
        c.similarity_backend, ij.judged_new AS interviewer_judged_new, ij.same_as AS interviewer_same_as,
        ij.revised_similarity_pole, ij.revised_contrast_pole, ij.note AS interviewer_note,
-       r.rt_ms, c.created_at, p.config_version
+       r.rt_ms, r.language AS answer_language, c.created_at, p.config_version
 FROM constructs c
 JOIN triads t ON t.triad_id = c.triad_id
 JOIN participants p ON p.participant_id = c.participant_id

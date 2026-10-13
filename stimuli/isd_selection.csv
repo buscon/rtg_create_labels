@@ -1,0 +1,12 @@
+GroupID,label,use,source_category,city,LocationID,n,P,E,LAeq,zip
+CV41,calm-pleasant,clip,natural,Granada,CarloV,1,0.71,-0.71,46.09,WAV_Granada_1.zip
+RP232,pleasant,clip,mixed,London,RegentsParkJapan,2,0.96,0.27,55.42,WAV_London_2.zip
+TM122,vibrant,clip,mixed,London,TateModern,2,0.78,0.43,63.28,WAV_London_4.zip
+CT318,eventful,clip,urban,London,CamdenTown,2,-0.21,0.84,67.62,WAV_London_1.zip
+ET216,chaotic,clip,urban,London,EustonTap,1,-0.49,0.72,70.22,WAV_London_1.zip
+SM305,chaotic (crowd),clip,,Venice,SanMarco,2,-0.14,0.67,72.98,WAV_Venice_1.zip
+MC323,monotonous,clip,urban,London,MarchmontGarden,1,-0.47,-0.38,55.3,WAV_London_1.zip
+BIB4,uneventful,clip,,Granada,PlazaBibRambla,3,0.49,-0.45,65.73,WAV_Granada_1.zip
+RS308,practice,practice,,London,RussellSq,2,0.74,0.4,66.62,WAV_London_3.zip
+RF215,practice,practice,mixed,London,RegentsParkFields,2,0.52,-0.44,53.03,WAV_London_2.zip
+PL203,practice,practice,,London,PancrasLock,2,-0.32,0.17,63.25,WAV_London_2.zip
