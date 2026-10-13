@@ -16,6 +16,17 @@ CLONE="${3:-/rtg_create_labels}"
 cd "$(dirname "$0")/.."
 
 ls public/audio/*.flac >/dev/null || { echo "no clips in public/audio (run stimuli/isd_finalize.py)"; exit 1; }
+# Some file transfer and sync tools put a tag (ID3) in front of the FLAC data. Firefox then
+# refuses to play the file. Remove anything before the "fLaC" marker.
+python3 - <<'PY'
+import glob
+for f in glob.glob("public/audio/*.flac"):
+    d = open(f, "rb").read()
+    i = d.find(b"fLaC")
+    if i > 0:
+        open(f, "wb").write(d[i:])
+        print(f"removed a {i}-byte tag in front of the FLAC data: {f}")
+PY
 ssh "$LOGIN" "mkdir -p '$WEB/audio/headphone'"
 scp public/audio/*.flac "$LOGIN:$WEB/audio/"
 if [ -f private/headphone_manifest.csv ]; then

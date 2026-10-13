@@ -33,6 +33,8 @@ import argparse
 import html
 import math
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -87,6 +89,21 @@ def fade(x: np.ndarray, fs: int, seconds: float) -> np.ndarray:
     x[:n] *= ramp[:, None]
     x[-n:] *= ramp[::-1][:, None]
     return x
+
+
+def write_flac(dest: Path, y: np.ndarray, fs: int, bits: int) -> None:
+    """FLAC files written by libsndfile (soundfile) are not decoded by Firefox
+    (NS_ERROR_DOM_MEDIA_METADATA_ERR); FLAC encoded by ffmpeg plays in all browsers.
+    So the audio is written as WAV first and encoded with ffmpeg (lossless)."""
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        sys.exit("ffmpeg is needed to write browser-compatible FLAC files (macOS: brew install ffmpeg)")
+    tmp = dest.with_suffix(".tmp.wav")
+    sf.write(tmp, y, fs, subtype=f"PCM_{bits}")
+    fmt = "s16" if bits == 16 else "s32"
+    subprocess.run([ffmpeg, "-v", "error", "-y", "-i", str(tmp), "-c:a", "flac", "-sample_fmt", fmt,
+                    "-map_metadata", "-1", str(dest)], check=True)
+    tmp.unlink()
 
 
 def set_ini(text: str, section: str, key: str, value: str) -> str:
@@ -168,7 +185,7 @@ def main() -> None:
     audio = REPO / "public" / "audio"
     audio.mkdir(parents=True, exist_ok=True)
     for gid, (y, fs) in out.items():
-        sf.write(audio / names[gid], (y * gain).astype(np.float32), fs, subtype=f"PCM_{args.bits}")
+        write_flac(audio / names[gid], (y * gain).astype(np.float32), fs, args.bits)
     df.to_csv(HERE / "isd_clips.csv", index=False)
 
     elements = pd.DataFrame({"element_id": range(1, len(clips) + 1),

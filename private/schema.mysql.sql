@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS participants (
     headphone_score    INT NULL,
     headphone_passed   TINYINT NULL,
     headphones_model   VARCHAR(200) NULL,          -- model of the headphones or loudspeakers
-    listening_device   VARCHAR(20) NULL,           -- headphones | speakers | builtin
+    listening_device   VARCHAR(20) NULL,           -- headphones | speakers
     listening_environment VARCHAR(20) NULL,        -- quiet | some_noise | noisy
     hearing_problems   VARCHAR(200) NULL,
     config_version     VARCHAR(50) NOT NULL,

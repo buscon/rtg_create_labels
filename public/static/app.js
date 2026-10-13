@@ -227,7 +227,6 @@ function showAbout() {
     <div class="radios">
       <label><input type="radio" name="device" value="headphones"> ${tx("device_headphones")}</label>
       <label><input type="radio" name="device" value="speakers"> ${tx("device_speakers")}</label>
-      <label><input type="radio" name="device" value="builtin"> ${tx("device_builtin")}</label>
     </div>
     <label class="block" for="hp">${tx("device_model_q")}</label>
     <input type="text" id="hp" maxlength="200" autocomplete="off">

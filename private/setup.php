@@ -61,6 +61,14 @@ foreach (rgt_elements($cfg) as $e) if (!is_file("$audio/{$e['filename']}")) $mis
 if ($cfg['triads']['practice_triad']) foreach ($cfg['stimuli']['practice_clips'] as $p) if (!is_file("$audio/$p")) $missing[] = $p;
 if ($missing) { line('WARN', 'audio files missing in audio/: ' . implode(', ', $missing)); }
 else line('ok', 'all clips found in audio/');
+// Firefox does not play FLAC files with a tag (e.g. ID3) in front of the FLAC data
+$bad = [];
+foreach (glob("$audio/*.flac") ?: [] as $f) {
+    if (file_get_contents($f, false, null, 0, 4) !== 'fLaC') $bad[] = basename($f);
+    elseif ((fileperms($f) & 0004) === 0) $bad[] = basename($f) . ' (not readable by the web server: chmod 644)';
+}
+if ($bad) line('WARN', 'audio files that browsers may not play: ' . implode(', ', $bad)
+    . ' (upload again with scripts/upload_server_files.sh)');
 if ($cfg['headphone_check']['enabled']) {
     if (is_file("$privateDir/headphone_manifest.csv")) line('ok', 'headphone-check answer key found');
     else line('WARN', 'private/headphone_manifest.csv missing (run scripts/make_headphone_stimuli.py and upload it '

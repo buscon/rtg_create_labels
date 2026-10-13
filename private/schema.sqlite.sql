@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS participants (
     headphone_score    INTEGER,
     headphone_passed   INTEGER,
     headphones_model   TEXT,               -- model of the headphones or loudspeakers
-    listening_device   TEXT,               -- headphones | speakers | builtin
+    listening_device   TEXT,               -- headphones | speakers
     listening_environment TEXT,            -- quiet | some_noise | noisy
     hearing_problems   TEXT,
     config_version     TEXT NOT NULL,
