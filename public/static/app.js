@@ -596,20 +596,24 @@ function showTriad(triad) {
   };
   document.getElementById("nodiff").onclick = () => send({ no_difference: true, hints_shown: hints }, null);
 
-  // thinking prompts: one more per click, in a fixed order; which ones were opened is saved with the answer
+  // thinking prompts: all shown at once, each with a title; the button shows and hides them.
+  // If they were opened, their numbers are saved with the answer.
   const N_PROMPTS = 6;
   const hints = [];
   const ideaBtn = document.getElementById("idea");
-  if (ideaBtn) ideaBtn.onclick = () => {
-    const n = hints.length + 1;
-    if (n > N_PROMPTS) return;
-    hints.push(n);
-    const li = document.createElement("li");
-    li.innerHTML = tx(`prompt_${n}`);
-    document.getElementById("idea-list").appendChild(li);
-    if (hints.length === N_PROMPTS) ideaBtn.hidden = true;
-    else setText(ideaBtn, "more_idea");
-  };
+  if (ideaBtn) {
+    const list = document.getElementById("idea-list");
+    list.innerHTML = Array.from({ length: N_PROMPTS }, (_, i) =>
+      `<li><strong>${tx(`prompt_title_${i + 1}`)}</strong><br>${tx(`prompt_${i + 1}`)}</li>`).join("");
+    list.hidden = true;
+    ideaBtn.setAttribute("aria-expanded", "false");
+    ideaBtn.onclick = () => {
+      list.hidden = !list.hidden;
+      ideaBtn.setAttribute("aria-expanded", String(!list.hidden));
+      setText(ideaBtn, list.hidden ? "need_idea" : "hide_ideas");
+      if (!list.hidden && !hints.length) hints.push(...Array.from({ length: N_PROMPTS }, (_, i) => i + 1));
+    };
+  }
   updateState();
 }
 
