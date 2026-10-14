@@ -23,6 +23,12 @@ CREATE TABLE IF NOT EXISTS participants (
     headphones_model   TEXT,               -- model of the headphones or loudspeakers
     listening_device   TEXT,               -- headphones | speakers
     listening_environment TEXT,            -- quiet | some_noise | noisy
+    age_group          TEXT,                -- 18-24 | 25-34 | 35-44 | 45-54 | 55-64 | 65+ | na
+    gender             TEXT,                -- female | male | diverse | na
+    first_language     TEXT,                -- de | en | other | na
+    first_language_other TEXT,
+    sound_expertise    TEXT,                -- none | hobby | professional | na
+    residence          TEXT,                -- city | town | rural | na
     hearing_problems   TEXT,
     config_version     TEXT NOT NULL,
     config_snapshot    TEXT NOT NULL,      -- JSON copy of the active configuration

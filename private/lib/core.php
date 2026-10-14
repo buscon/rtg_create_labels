@@ -88,6 +88,11 @@ function rgt_init_db(array $cfg): void {
     rgt_ensure_column($pdo, 'responses', 'language', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(10) NULL');
     rgt_ensure_column($pdo, 'participants', 'access_code', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(50) NULL');
     rgt_ensure_column($pdo, 'responses', 'hints_shown', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(500) NULL');
+    foreach (['age_group' => 'VARCHAR(10) NULL', 'gender' => 'VARCHAR(10) NULL', 'first_language' => 'VARCHAR(10) NULL',
+              'first_language_other' => 'VARCHAR(100) NULL', 'sound_expertise' => 'VARCHAR(15) NULL',
+              'residence' => 'VARCHAR(10) NULL'] as $col => $type) {
+        rgt_ensure_column($pdo, 'participants', $col, rgt_is_sqlite($pdo) ? 'TEXT' : $type);
+    }
     rgt_ensure_column($pdo, 'participants', 'listening_device', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(20) NULL');
     rgt_ensure_column($pdo, 'participants', 'listening_environment', rgt_is_sqlite($pdo) ? 'TEXT' : 'VARCHAR(20) NULL');
 

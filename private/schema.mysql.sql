@@ -24,6 +24,12 @@ CREATE TABLE IF NOT EXISTS participants (
     headphones_model   VARCHAR(200) NULL,          -- model of the headphones or loudspeakers
     listening_device   VARCHAR(20) NULL,           -- headphones | speakers
     listening_environment VARCHAR(20) NULL,        -- quiet | some_noise | noisy
+    age_group          VARCHAR(10) NULL,    -- 18-24 | 25-34 | 35-44 | 45-54 | 55-64 | 65+ | na
+    gender             VARCHAR(10) NULL,    -- female | male | diverse | na
+    first_language     VARCHAR(10) NULL,    -- de | en | other | na
+    first_language_other VARCHAR(100) NULL,
+    sound_expertise    VARCHAR(15) NULL,    -- none | hobby | professional | na
+    residence          VARCHAR(10) NULL,    -- city | town | rural | na
     hearing_problems   VARCHAR(200) NULL,
     config_version     VARCHAR(50) NOT NULL,
     config_snapshot    MEDIUMTEXT NOT NULL,

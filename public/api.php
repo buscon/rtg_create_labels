@@ -144,6 +144,21 @@ function next_triad(PDO $pdo, array $p): array {
     ]];
 }
 
+/** Demographic answers (design file 07): only the listed values are stored, anything else as NULL. */
+function demographics(array $b): array {
+    $allowed = [
+        'age_group' => ['18-24', '25-34', '35-44', '45-54', '55-64', '65+', 'na'],
+        'gender' => ['female', 'male', 'diverse', 'na'],
+        'first_language' => ['de', 'en', 'other', 'na'],
+        'sound_expertise' => ['none', 'hobby', 'professional', 'na'],
+        'residence' => ['city', 'town', 'rural', 'na'],
+    ];
+    $v = [];
+    foreach ($allowed as $k => $vals) $v[$k] = in_array($b[$k] ?? null, $vals, true) ? $b[$k] : null;
+    $other = $v['first_language'] === 'other' ? str_or_null($b['first_language_other'] ?? null, 100) : null;
+    return [$v['age_group'], $v['gender'], $v['first_language'], $other, $v['sound_expertise'], $v['residence']];
+}
+
 function vector($v, int $max = 2048): ?array {
     if (!is_array($v) || !$v || count($v) > $max) return null;
     foreach ($v as $x) if (!is_int($x) && !is_float($x)) return null;
@@ -232,14 +247,16 @@ case 'POST session':
         $snapshot = $cfg; unset($snapshot['_private_dir']);
         $pdo->prepare('INSERT INTO participants (participant_id, mode, invited_mode, language, started_at, headphone_sequence,
             headphones_model, hearing_problems, config_version, config_snapshot, clip_mapping, user_agent, access_code,
-            listening_device, listening_environment)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([
+            listening_device, listening_environment, age_group, gender, first_language, first_language_other,
+            sound_expertise, residence)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)')->execute([
             $pid, $mode, $invited, $lang, rgt_now(), $hpSeq ? json_encode($hpSeq) : null,
             str_or_null($b['headphones_model'] ?? null, 200), str_or_null($b['hearing_problems'] ?? null, 200),
             (string)$cfg['study']['config_version'], json_encode($snapshot, JSON_UNESCAPED_UNICODE),
             json_encode($mapping), str_or_null($_SERVER['HTTP_USER_AGENT'] ?? null, 500), $code,
             in_array($b['listening_device'] ?? null, ['headphones', 'speakers'], true) ? $b['listening_device'] : null,
-            in_array($b['listening_environment'] ?? null, ['quiet', 'some_noise', 'noisy'], true) ? $b['listening_environment'] : null]);
+            in_array($b['listening_environment'] ?? null, ['quiet', 'some_noise', 'noisy'], true) ? $b['listening_environment'] : null,
+            ...demographics($b)]);
         $ins = $pdo->prepare('INSERT INTO triads (participant_id, order_index, set_number, pos_a, pos_b, pos_c) VALUES (?,?,?,?,?,?)');
         foreach ($plan as $row) {
             $ins->execute([$pid, $row['order_index'], $row['set_number'], ...$row['elements']]);

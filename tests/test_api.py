@@ -476,3 +476,13 @@ def test_thinking_prompts_are_stored(server):
                                                "hints_shown": [1, 2, "bad", 99]})
     assert code == 200
     assert query(server, "SELECT hints_shown FROM responses WHERE triad_id = ?", (triad["triad_id"],))[0][0] == "[1,2]"
+
+
+def test_demographics_are_stored(server):
+    code, r = call(server, "session", "POST", {"language": "de", "access_code": "TEST-CODE", "age_group": "25-34",
+                                                "gender": "na", "first_language": "other", "first_language_other": "Italiano",
+                                                "sound_expertise": "professional", "residence": "x"})
+    assert code == 200
+    row = query(server, "SELECT age_group, gender, first_language, first_language_other, sound_expertise, residence "
+                        "FROM participants WHERE participant_id = ?", (r["participant_id"],))[0]
+    assert row == ("25-34", "na", "other", "Italiano", "professional", None)

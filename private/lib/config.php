@@ -36,7 +36,7 @@ function rgt_load_config(string $privateDir, bool $checkFiles = true): array {
     $raw['access'] = ($raw['access'] ?? []) + ['require_code' => false, 'codes_file' => 'access_codes.csv',
         'max_sessions_per_ip_hour' => 0, 'min_play_fraction' => 0.0, 'site_url' => ''];
     $raw['interface'] = ($raw['interface'] ?? []) + ['pause_when_hidden' => false, 'pause_on_blur' => false,
-        'no_difference_delay_s' => 0, 'thinking_prompts' => false];
+        'no_difference_delay_s' => 0, 'thinking_prompts' => false, 'demographics' => false];
     $raw['_private_dir'] = $privateDir;
     rgt_validate_config($raw, $checkFiles);
     return $raw;
@@ -175,7 +175,8 @@ function rgt_public_config(array $c): array {
         'interface' => ['pause_when_hidden' => (bool)$c['interface']['pause_when_hidden'],
                         'pause_on_blur' => (bool)$c['interface']['pause_on_blur'],
                         'no_difference_delay_s' => (int)$c['interface']['no_difference_delay_s'],
-                        'thinking_prompts' => (bool)$c['interface']['thinking_prompts']],
+                        'thinking_prompts' => (bool)$c['interface']['thinking_prompts'],
+                        'demographics' => (bool)$c['interface']['demographics']],
         'group' => $c['_group'] ?? null,
         'similarity' => ['backend' => $c['similarity']['backend'],
                          'model' => $c['similarity']['embedding_model'],

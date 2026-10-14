@@ -230,6 +230,44 @@ function showWelcome() {
       if (!S.token) return;
     }
     startEmbedding();
+    if (S.cfg.interface.demographics) showDemographics(); else showAbout();
+  };
+}
+
+// ------------------------------------------------------------------ demographics (sent with the session)
+
+const DEMO = {
+  age_group: ["18-24", "25-34", "35-44", "45-54", "55-64", "65+", "na"],
+  gender: ["female", "male", "diverse", "na"],
+  first_language: ["de", "en", "other", "na"],
+  sound_expertise: ["none", "hobby", "professional", "na"],
+  residence: ["city", "town", "rural", "na"],
+};
+
+function showDemographics() {
+  const group = (field) => `<label class="block">${tx(`demo_${field}_q`)}</label>
+    <div class="radios">${DEMO[field].map((v) =>
+      `<label><input type="radio" name="${field}" value="${v}"> ${tx(`demo_${field}_${v.replace(/[^a-z0-9]/gi, "_")}`)}</label>`).join("")}</div>`;
+  render(`<div class="panel"><h1>${tx("demo_title")}</h1><p>${tx("demo_text")}</p>
+    ${Object.keys(DEMO).map(group).join("")}
+    <input type="text" id="lang_other" maxlength="100" autocomplete="off" hidden>
+    <p class="note" id="msg" hidden></p>
+    <div class="actions"><button class="primary" id="go">${tx("next")}</button></div></div>`);
+  const other = document.getElementById("lang_other");
+  // the free-text field for another first language is placed right after its option
+  app.querySelector('input[name=first_language][value=other]').closest(".radios").after(other);
+  app.querySelectorAll("input[name=first_language]").forEach((r) => {
+    r.onchange = () => { other.hidden = r.value !== "other" || !r.checked; if (!other.hidden) other.focus(); };
+  });
+  document.getElementById("go").onclick = () => {
+    const d = {};
+    for (const f of Object.keys(DEMO)) {
+      const c = app.querySelector(`input[name=${f}]:checked`);
+      if (!c) { const m = document.getElementById("msg"); setText(m, "demo_missing"); m.hidden = false; return; }
+      d[f] = c.value;
+    }
+    d.first_language_other = d.first_language === "other" ? other.value.trim() : "";
+    S.demographics = d;
     showAbout();
   };
 }
@@ -276,6 +314,7 @@ function showAbout() {
       const res = await api("session", { method: "POST", body: {
         language: S.lang, invited_mode: S.invited, access_code: S.code,
         listening_device: device.value, listening_environment: env.value,
+        ...(S.demographics || {}),
         headphones_model: document.getElementById("hp").value,
         hearing_problems: hear ? hear.value : null,
       } });
