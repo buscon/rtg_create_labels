@@ -1,13 +1,15 @@
 # Stimulus preparation
 
-**Current clip set (13 October 2026): 8 clips from the International Soundscape Database (ISD).**
-See `rgt-tool-design/13_stimuli.md`. The workflow for it:
+**Current clip set (23 October 2026): 8 clips from the International Soundscape Database (ISD)
+and 3 natural clips from Silenzi in Quota (SiQ).** See `rgt-tool-design/13_stimuli.md`. The workflow:
 
 ```bash
 python stimuli/isd_shortlist.py --mode paq          # listening pages with PAQ map (stimuli/work/isd/)
-# choose: stimuli/isd_selection.csv (GroupID, label, use = clip | practice)
+python stimuli/siq_ratings.py SiQ_Dataset_v_1.2.csv stimuli/siq_ratings.csv   # SiQ ratings per recording
+# choose: stimuli/isd_selection.csv (GroupID, label, use = clip | practice, source = isd | siq, LAeq, ...)
+# SiQ audio is not public: put the WAV files from the authors into stimuli/raw/SiQ/ (not in git)
 python stimuli/isd_finalize.py                     # -> public/audio/*.flac, elements.csv, config.ini, credits
-python scripts/make_triad_set.py --clips 8 --out private/data/triad_set.csv   # only if the number of clips changes
+python scripts/make_triad_set.py --clips 11 --out private/data/triad_set.csv   # only if the number of clips changes
 ```
 
 Then upload `public/audio/*.flac` to the server (not in git) and deploy as usual.

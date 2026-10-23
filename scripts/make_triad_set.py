@@ -6,7 +6,7 @@
 Without --triads, the script starts at the lower bound (Schoenheim bound) and adds
 triads until a covering is found. Among coverings it prefers the one where the
 number of appearances per clip differs least, then the fewest repeated pairs.
-Known minimum sizes: 6 clips -> 6 triads, 7 -> 7, 8 -> 11, 9 -> 12, 10 -> 17.
+Known minimum sizes: 6 clips -> 6 triads, 7 -> 7, 8 -> 11, 9 -> 12, 10 -> 17, 11 -> 19.
 """
 from __future__ import annotations
 

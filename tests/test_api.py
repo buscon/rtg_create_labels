@@ -486,3 +486,12 @@ def test_demographics_are_stored(server):
     row = query(server, "SELECT age_group, gender, first_language, first_language_other, sound_expertise, residence "
                         "FROM participants WHERE participant_id = ?", (r["participant_id"],))[0]
     assert row == ("25-34", "na", "other", "Italiano", "professional", None)
+
+
+def test_practice_clips_do_not_take_clip_ids(server):
+    """Practice clips get ids from 1001 on, so clips added later (e.g. 8 -> 11) keep ids 9, 10, ..."""
+    rows = query(server, "SELECT element_id, is_practice FROM elements ORDER BY element_id")
+    clips = [int(r[0]) for r in rows if int(r[1]) == 0]
+    practice = [int(r[0]) for r in rows if int(r[1]) == 1]
+    assert clips == list(range(1, len(clips) + 1))
+    assert practice and min(practice) >= 1001

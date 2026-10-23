@@ -12,3 +12,7 @@
   - RS308 (RussellSq, London), 0.0-30.0 s -> practice_1.flac
   - RF215 (RegentsParkFields, London), 6.5-36.5 s -> practice_2.flac
   - PL203 (PancrasLock, London), 4.5-34.5 s -> practice_3.flac
+- Silenzi in Quota (Oberman, Latini, Aletta, Gozzi, Kang, Torresin; Sci Rep 15, 28759, 2025, doi:10.1038/s41598-025-08524-y; dataset zenodo.org/records/20719737), recordings provided by the authors. Recordings used (30-s excerpts, level-adjusted, faded in and out):
+  - MR_101 (SeiserAlm, Seiser Alm (IT)), 28.0-58.0 s -> clip_09.flac
+  - LODF_101 (GlenLui, Cairngorms (UK)), 12.5-42.5 s -> clip_10.flac
+  - LODB_101 (GlenLui, Cairngorms (UK)), 8.5-38.5 s -> clip_11.flac

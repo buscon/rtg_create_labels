@@ -1,14 +1,18 @@
-"""Put the chosen ISD recordings into the website.
+"""Put the chosen recordings (ISD, plus a few Silenzi in Quota recordings) into the website.
 
     python stimuli/isd_finalize.py [--length 30] [--fade 0.5] [--bits 16] [--dry-run]
 
-Input: stimuli/isd_selection.csv (GroupID, label, use = clip | practice, ...).
-The recordings are taken from stimuli/raw/isd/ (downloaded with isd_shortlist.py;
-missing ones are downloaded here).
+Input: stimuli/isd_selection.csv (GroupID, label, use = clip | practice, source = isd | siq, ...).
+ISD recordings are taken from stimuli/raw/isd/ (downloaded with isd_shortlist.py;
+missing ones are downloaded here). Silenzi in Quota (SiQ) recordings are not public: the
+files received from the authors go into stimuli/raw/SiQ/ (name starting with the GroupID,
+e.g. "MR_101_60 (0.00 - 60.00 s).wav"); their LAeq in isd_selection.csv is the value
+published in the SiQ dataset (column LAeqL(A), see stimuli/siq_ratings.csv).
 
 For every recording the script
-  1. corrects the file level to the LAeq published in the ISD data if the two differ by
-     more than 3 dB (Groningen files are exported on a different scale);
+  1. corrects the file level to the published LAeq if the two differ by more than 3 dB
+     (Groningen files are exported on a different scale; the SiQ files are about 29 dB
+     below their published level, i.e. not stored in pascal);
   2. chooses the 30-s excerpt whose level is closest to the level of the whole recording
      and whose first and last second are close to the median level (so the clip does not
      start or end in the middle of a loud event); steps of 0.5 s;
@@ -49,6 +53,27 @@ import isd_shortlist as isd  # noqa: E402
 
 REPO = HERE.parent
 P_REF = 2e-5
+SIQ_DIR = HERE / "raw" / "SiQ"
+QUIET_FRAME_DBFS = -85.0   # quietest 0.125-s A-weighted frame below this -> 24-bit file
+SIQ_CREDIT_EN = ("Silenzi in Quota (Oberman, Latini, Aletta, Gozzi, Kang, Torresin; Sci Rep 15, 28759, 2025, "
+                 '<a href="https://doi.org/10.1038/s41598-025-08524-y">doi:10.1038/s41598-025-08524-y</a>; '
+                 'dataset <a href="https://zenodo.org/records/20719737">zenodo.org/records/20719737</a>), '
+                 "recordings provided by the authors")
+SIQ_CREDIT_DE = SIQ_CREDIT_EN.replace("recordings provided by the authors", "Aufnahmen von den Autor:innen zur Verfügung gestellt")
+
+
+def source_of(r) -> str:
+    s = getattr(r, "source", "isd")
+    return "isd" if not isinstance(s, str) or not s else s
+
+
+def raw_path(r) -> Path:
+    if source_of(r) == "siq":
+        hits = sorted(p for p in SIQ_DIR.glob(f"{r.GroupID}*.wav") if p.name[len(r.GroupID)] in "_ .")
+        if len(hits) != 1:
+            sys.exit(f"{r.GroupID}: expected one file {SIQ_DIR}/{r.GroupID}*.wav, found {len(hits)}")
+        return hits[0]
+    return isd.RAWDIR / r.LocationID / f"{r.GroupID}.wav"
 
 
 def short_levels(x: np.ndarray, fs: int, win: float = 0.125) -> np.ndarray:
@@ -118,7 +143,8 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--length", type=float, default=30.0)
     ap.add_argument("--fade", type=float, default=0.5)
-    ap.add_argument("--bits", type=int, choices=(16, 24), default=16)
+    ap.add_argument("--bits", type=int, choices=(16, 24), default=16,
+                    help="bit depth (default 16; very quiet clips are written with 24 bit anyway)")
     ap.add_argument("--samplerate", type=int, default=48000, help="output sample rate (default 48000)")
     ap.add_argument("--peak", type=float, default=-1.0, help="peak of the loudest file in dBFS (default -1)")
     ap.add_argument("--dry-run", action="store_true")
@@ -133,8 +159,8 @@ def main() -> None:
     # download what is missing
     zips: dict[str, isd.RemoteZip] = {}
     for r in sel.itertuples():
-        dest = isd.RAWDIR / r.LocationID / f"{r.GroupID}.wav"
-        if dest.exists():
+        dest = raw_path(r)
+        if source_of(r) != "isd" or dest.exists():
             continue
         if r.zip not in zips:
             zips[r.zip] = isd.RemoteZip(isd.BASE + r.zip, retries=10, cache=isd.RAWDIR / f".index_{r.zip}.json")
@@ -148,7 +174,7 @@ def main() -> None:
 
     out, info = {}, []
     for r in sel.itertuples():
-        x, fs = sf.read(isd.RAWDIR / r.LocationID / f"{r.GroupID}.wav", always_2d=True)
+        x, fs = sf.read(raw_path(r), always_2d=True)
         if fs != args.samplerate:                     # ISD has 44.1 and 48 kHz files: use one rate
             x = signal.resample_poly(x, args.samplerate, fs, axis=0)
             fs = args.samplerate
@@ -161,6 +187,7 @@ def main() -> None:
         y = fade(x[int(start * fs): int(start * fs) + int(args.length * fs)], fs, args.fade)
         out[r.GroupID] = (y, fs)
         info.append({"file": names[r.GroupID], "GroupID": r.GroupID, "label": r.label, "use": r.use,
+                     "source": source_of(r),
                      "LocationID": r.LocationID, "city": getattr(r, "city", ""),
                      "start_s": start, "end_s": start + args.length,
                      "duration_recording_s": round(len(x) / fs, 1),
@@ -185,8 +212,15 @@ def main() -> None:
     audio = REPO / "public" / "audio"
     audio.mkdir(parents=True, exist_ok=True)
     for gid, (y, fs) in out.items():
-        write_flac(audio / names[gid], (y * gain).astype(np.float32), fs, args.bits)
-    df.to_csv(HERE / "isd_clips.csv", index=False)
+        y = (y * gain).astype(np.float32)
+        # very quiet recordings (the SiQ nature clips play at about 30-37 dB SPL): the quietest
+        # moments come within a few dB of the 16-bit noise floor, so these files are written with 24 bit
+        bits = 24 if args.bits == 16 and short_levels(y, fs).min() < QUIET_FRAME_DBFS else args.bits
+        write_flac(audio / names[gid], y, fs, bits)
+        for row in info:
+            if row["file"] == names[gid]:
+                row["bits"] = bits
+    pd.DataFrame(info).to_csv(HERE / "isd_clips.csv", index=False)
 
     elements = pd.DataFrame({"element_id": range(1, len(clips) + 1),
                              "filename": [names[g] for g in clips.GroupID],
@@ -199,26 +233,37 @@ def main() -> None:
     text = set_ini(text, "stimuli", "practice_clips", '"' + " | ".join(names[g] for g in practice.GroupID) + '"')
     cfg.write_text(text, encoding="utf-8")
 
-    lines = [f"- {isd.CREDIT}. Recordings used (30-s excerpts, level-adjusted, faded in and out):"]
-    for row in info:
-        lines.append(f"  - {row['GroupID']} ({row['LocationID']}, {row['city']}), "
-                     f"{row['start_s']:.1f}-{row['end_s']:.1f} s -> {row['file']}")
+    lines = []
+    for src, credit in (("isd", isd.CREDIT), ("siq", re.sub(r"<[^>]+>", "", SIQ_CREDIT_EN))):
+        rows = [row for row in info if row["source"] == src]
+        if not rows:
+            continue
+        lines.append(f"- {credit}. Recordings used (30-s excerpts, level-adjusted, faded in and out):")
+        for row in rows:
+            lines.append(f"  - {row['GroupID']} ({row['LocationID']}, {row['city']}), "
+                         f"{row['start_s']:.1f}-{row['end_s']:.1f} s -> {row['file']}")
     (HERE / "ATTRIBUTION.md").write_text("# Sound sources\n\n" + "\n".join(lines) + "\n", encoding="utf-8")
     items = "".join(f"<li>{html.escape(r['GroupID'])} ({html.escape(r['LocationID'])}, {html.escape(str(r['city']))})</li>"
                     for r in info)
+    has_siq = any(row["source"] == "siq" for row in info)
+    lead_en = "Most sounds in this study are" if has_siq else "The sounds in this study are"
+    lead_de = "Die meisten Klänge dieser Studie sind" if has_siq else "Die Klänge dieser Studie sind"
+    siq_en = f"Some sounds are excerpts of recordings from {SIQ_CREDIT_EN}.\n" if has_siq else ""
+    siq_de = f"Einige Klänge sind Ausschnitte aus Aufnahmen von {SIQ_CREDIT_DE}.\n" if has_siq else ""
     (REPO / "public" / "credits.html").write_text(f"""<!doctype html><html lang="en"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Sound credits</title><link rel="stylesheet" href="static/style.css">
 <main><div class="panel"><h1>Sound recordings / Tonaufnahmen</h1>
-<p>The sounds in this study are 30-second excerpts of recordings from the International Soundscape Database
+<p>{lead_en} 30-second excerpts of recordings from the International Soundscape Database
 (ISD v1.0; Mitchell, Oberman, Aletta, Erfanian, Kachlicka, Lionello, Kang et al.),
 <a href="https://doi.org/10.5281/zenodo.10672568">doi:10.5281/zenodo.10672568</a>,
 published under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> licence.
-They were shortened, faded in and out and level-adjusted.</p>
-<p>Die Klänge dieser Studie sind 30-Sekunden-Ausschnitte aus Aufnahmen der International Soundscape Database
+{siq_en}They were shortened, faded in and out and level-adjusted.</p>
+<p>{lead_de} 30-Sekunden-Ausschnitte aus Aufnahmen der International Soundscape Database
 (ISD v1.0; Mitchell, Oberman, Aletta, Erfanian, Kachlicka, Lionello, Kang et al.),
 <a href="https://doi.org/10.5281/zenodo.10672568">doi:10.5281/zenodo.10672568</a>,
-veröffentlicht unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de">Creative Commons Namensnennung 4.0</a>. Sie wurden gekürzt, ein- und ausgeblendet und im Pegel angepasst.</p>
+veröffentlicht unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de">Creative Commons Namensnennung 4.0</a>.
+{siq_de}Sie wurden gekürzt, ein- und ausgeblendet und im Pegel angepasst.</p>
 <ul>{items}</ul></div></main></html>
 """, encoding="utf-8")
     print(f"written: {len(out)} files to {audio}, private/data/elements.csv ({len(clips)} clips), "

@@ -142,13 +142,24 @@ function rgt_init_db(array $cfg): void {
             $del = $pdo->prepare('DELETE FROM elements WHERE element_id = ?');
             foreach ($old as $row) if (!in_array($row['filename'], $keep, true)) $del->execute([$row['element_id']]);
         }
+        // practice clips get ids from 1001 on, so they never take the id of a clip added later
         $find = $pdo->prepare('SELECT 1 FROM elements WHERE filename = ?');
+        $taken = $pdo->prepare('SELECT 1 FROM elements WHERE element_id = ?');
+        $next = 1001;
         foreach ($cfg['stimuli']['practice_clips'] as $name) {
             $find->execute([$name]);
             $exists = $find->fetch();
             $find->closeCursor();
             if (!$exists) {
-                $pdo->prepare('INSERT INTO elements (filename, is_practice) VALUES (?, 1)')->execute([$name]);
+                while (true) {
+                    $taken->execute([$next]);
+                    $used = $taken->fetch();
+                    $taken->closeCursor();
+                    if (!$used) break;
+                    $next++;
+                }
+                $pdo->prepare('INSERT INTO elements (element_id, filename, is_practice) VALUES (?, ?, 1)')->execute([$next, $name]);
+                $next++;
             }
         }
         rgt_commit($pdo);
