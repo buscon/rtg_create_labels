@@ -1,6 +1,6 @@
 """Put the chosen recordings (ISD, plus a few Silenzi in Quota recordings) into the website.
 
-    python stimuli/isd_finalize.py [--length 30] [--fade 0.5] [--bits 16] [--dry-run]
+    python stimuli/isd_finalize.py [--length 15] [--fade 0.5] [--bits 16] [--dry-run]
 
 Input: stimuli/isd_selection.csv (GroupID, label, use = clip | practice, source = isd | siq, ...).
 ISD recordings are taken from stimuli/raw/isd/ (downloaded with isd_shortlist.py;
@@ -13,7 +13,7 @@ For every recording the script
   1. corrects the file level to the published LAeq if the two differ by more than 3 dB
      (Groningen files are exported on a different scale; the SiQ files are about 29 dB
      below their published level, i.e. not stored in pascal);
-  2. chooses the 30-s excerpt whose level is closest to the level of the whole recording
+  2. chooses the excerpt (default 15 s) whose level is closest to the level of the whole recording
      and whose first and last second are close to the median level (so the clip does not
      start or end in the middle of a loud event); steps of 0.5 s;
   3. applies 0.5-s raised-cosine fades;
@@ -141,7 +141,7 @@ def set_ini(text: str, section: str, key: str, value: str) -> str:
 
 def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--length", type=float, default=30.0)
+    ap.add_argument("--length", type=float, default=15.0, help="clip length in s (default 15; 30 until 23 Oct 2026)")
     ap.add_argument("--fade", type=float, default=0.5)
     ap.add_argument("--bits", type=int, choices=(16, 24), default=16,
                     help="bit depth (default 16; very quiet clips are written with 24 bit anyway)")
@@ -233,12 +233,13 @@ def main() -> None:
     text = set_ini(text, "stimuli", "practice_clips", '"' + " | ".join(names[g] for g in practice.GroupID) + '"')
     cfg.write_text(text, encoding="utf-8")
 
+    secs = f"{args.length:g}"
     lines = []
     for src, credit in (("isd", isd.CREDIT), ("siq", re.sub(r"<[^>]+>", "", SIQ_CREDIT_EN))):
         rows = [row for row in info if row["source"] == src]
         if not rows:
             continue
-        lines.append(f"- {credit}. Recordings used (30-s excerpts, level-adjusted, faded in and out):")
+        lines.append(f"- {credit}. Recordings used ({secs}-s excerpts, level-adjusted, faded in and out):")
         for row in rows:
             lines.append(f"  - {row['GroupID']} ({row['LocationID']}, {row['city']}), "
                          f"{row['start_s']:.1f}-{row['end_s']:.1f} s -> {row['file']}")
@@ -254,12 +255,12 @@ def main() -> None:
 <meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex">
 <title>Sound credits</title><link rel="stylesheet" href="static/style.css">
 <main><div class="panel"><h1>Sound recordings / Tonaufnahmen</h1>
-<p>{lead_en} 30-second excerpts of recordings from the International Soundscape Database
+<p>{lead_en} {secs}-second excerpts of recordings from the International Soundscape Database
 (ISD v1.0; Mitchell, Oberman, Aletta, Erfanian, Kachlicka, Lionello, Kang et al.),
 <a href="https://doi.org/10.5281/zenodo.10672568">doi:10.5281/zenodo.10672568</a>,
 published under the <a href="https://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0</a> licence.
 {siq_en}They were shortened, faded in and out and level-adjusted.</p>
-<p>{lead_de} 30-Sekunden-Ausschnitte aus Aufnahmen der International Soundscape Database
+<p>{lead_de} {secs}-Sekunden-Ausschnitte aus Aufnahmen der International Soundscape Database
 (ISD v1.0; Mitchell, Oberman, Aletta, Erfanian, Kachlicka, Lionello, Kang et al.),
 <a href="https://doi.org/10.5281/zenodo.10672568">doi:10.5281/zenodo.10672568</a>,
 veröffentlicht unter der Lizenz <a href="https://creativecommons.org/licenses/by/4.0/deed.de">Creative Commons Namensnennung 4.0</a>.

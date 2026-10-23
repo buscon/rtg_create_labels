@@ -50,7 +50,7 @@ hooks/post-merge            git hook on the server: runs deploy.sh after every g
 
 Edit `private/config.ini` in the repository, commit, push and deploy (see INSTALL.md). Changes apply to the next session that starts; no restart is needed. Each session stores a copy of the configuration it used. Increase `config_version` whenever you change a value, and set it to `1.0` before real data collection starts.
 
-Interface texts (consent, instructions, buttons) are in `public/static/i18n.js`. Texts marked `[PLACEHOLDER]` must be replaced with the approved study information.
+Interface texts (consent, instructions, buttons) are in `public/static/i18n.js`.
 
 ## Quick start on your own computer
 

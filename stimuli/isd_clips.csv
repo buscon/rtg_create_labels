@@ -1,15 +1,15 @@
 file,GroupID,label,use,source,LocationID,city,start_s,end_s,duration_recording_s,laeq_recording_db,laeq_excerpt_db,level_corrected_db,samplerate,dbfs_minus_dbspl,bits
-clip_01.flac,CV41,calm-pleasant,clip,isd,CarloV,Granada,0.0,30.0,30.2,46.1,46.0,0.0,48000,-100.2,16
-clip_02.flac,RP232,pleasant,clip,isd,RegentsParkJapan,London,2.0,32.0,35.8,55.4,56.0,0.0,48000,-100.2,16
-clip_03.flac,TM122,vibrant,clip,isd,TateModern,London,0.0,30.0,32.3,63.3,63.3,0.0,48000,-100.2,16
-clip_04.flac,CT318,eventful,clip,isd,CamdenTown,London,10.0,40.0,42.5,67.1,67.1,0.0,48000,-100.2,16
-clip_05.flac,ET216,chaotic,clip,isd,EustonTap,London,2.0,32.0,35.9,70.2,70.1,0.0,48000,-100.2,16
-clip_06.flac,SM305,chaotic (crowd),clip,isd,SanMarco,Venice,0.0,30.0,31.8,73.0,72.8,0.0,48000,-100.2,16
-clip_07.flac,MC323,monotonous,clip,isd,MarchmontGarden,London,0.0,30.0,30.0,55.3,55.2,0.0,48000,-100.2,16
-clip_08.flac,BIB4,uneventful,clip,isd,PlazaBibRambla,Granada,4.5,34.5,34.5,65.7,65.5,0.0,48000,-100.2,16
-clip_09.flac,MR_101,natural-calm,clip,siq,SeiserAlm,Seiser Alm (IT),28.0,58.0,60.0,34.4,35.5,29.3,48000,-100.2,24
-clip_10.flac,LODF_101,natural-pleasant,clip,siq,GlenLui,Cairngorms (UK),12.5,42.5,60.0,31.3,31.0,29.2,48000,-100.2,24
-clip_11.flac,LODB_101,natural-lively,clip,siq,GlenLui,Cairngorms (UK),8.5,38.5,60.0,37.3,37.4,29.3,48000,-100.2,24
-practice_1.flac,RS308,practice,practice,isd,RussellSq,London,0.0,30.0,34.9,66.6,66.6,0.0,48000,-100.2,16
-practice_2.flac,RF215,practice,practice,isd,RegentsParkFields,London,6.5,36.5,42.1,53.0,53.0,0.0,48000,-100.2,16
-practice_3.flac,PL203,practice,practice,isd,PancrasLock,London,4.5,34.5,43.1,63.2,63.7,0.0,48000,-100.2,16
+clip_01.flac,CV41,calm-pleasant,clip,isd,CarloV,Granada,8.0,23.0,30.2,46.1,46.1,0.0,48000,-100.2,16
+clip_02.flac,RP232,pleasant,clip,isd,RegentsParkJapan,London,11.5,26.5,35.8,55.4,58.7,0.0,48000,-100.2,16
+clip_03.flac,TM122,vibrant,clip,isd,TateModern,London,9.5,24.5,32.3,63.3,63.3,0.0,48000,-100.2,16
+clip_04.flac,CT318,eventful,clip,isd,CamdenTown,London,16.5,31.5,42.5,67.1,66.9,0.0,48000,-100.2,16
+clip_05.flac,ET216,chaotic,clip,isd,EustonTap,London,2.0,17.0,35.9,70.2,70.4,0.0,48000,-100.2,16
+clip_06.flac,SM305,chaotic (crowd),clip,isd,SanMarco,Venice,11.0,26.0,31.8,73.0,73.3,0.0,48000,-100.2,16
+clip_07.flac,MC323,monotonous,clip,isd,MarchmontGarden,London,10.5,25.5,30.0,55.3,57.1,0.0,48000,-100.2,16
+clip_08.flac,BIB4,uneventful,clip,isd,PlazaBibRambla,Granada,13.5,28.5,34.5,65.7,65.1,0.0,48000,-100.2,16
+clip_09.flac,MR_101,natural-calm,clip,siq,SeiserAlm,Seiser Alm (IT),33.5,48.5,60.0,34.4,33.6,29.3,48000,-100.2,24
+clip_10.flac,LODF_101,natural-pleasant,clip,siq,GlenLui,Cairngorms (UK),19.5,34.5,60.0,31.3,30.9,29.2,48000,-100.2,24
+clip_11.flac,LODB_101,natural-lively,clip,siq,GlenLui,Cairngorms (UK),27.0,42.0,60.0,37.3,36.6,29.3,48000,-100.2,24
+practice_1.flac,RS308,practice,practice,isd,RussellSq,London,7.5,22.5,34.9,66.6,66.3,0.0,48000,-100.2,16
+practice_2.flac,RF215,practice,practice,isd,RegentsParkFields,London,6.5,21.5,42.1,53.0,54.3,0.0,48000,-100.2,16
+practice_3.flac,PL203,practice,practice,isd,PancrasLock,London,24.5,39.5,43.1,63.2,63.0,0.0,48000,-100.2,16

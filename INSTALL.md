@@ -153,7 +153,6 @@ Download the dump folder with SFTP and convert it on your computer with `python 
 
 ## Before real data collection
 
-- Replace all `[PLACEHOLDER]` texts in `public/static/i18n.js` with the approved participant information.
 - Check the data protection set-up with the university's data protection officer (hosting at netcup; clarify whether a data processing agreement with netcup is needed).
 - Set all `TEST` values in `config.ini` after the test run and set `config_version = "1.0"`.
 - Restrict database access to local connections and change the database password (update `db_credentials.ini`).
