@@ -58,6 +58,7 @@ def server(request, tmp_path_factory):
     # access protection (design file 14): one group code for all tests; the timing check and the
     # IP limit are switched off here and tested separately
     set_ini(ini, "headphone_check", "enabled", "true")   # off in the study config, but still tested
+    set_ini(ini, "triads", "practice_triad", "true")     # off in the study config; the tests expect it
     set_ini(ini, "access", "require_code", "true")
     set_ini(ini, "access", "min_play_fraction", "0")
     set_ini(ini, "access", "max_sessions_per_ip_hour", "0")

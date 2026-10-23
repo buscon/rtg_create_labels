@@ -166,6 +166,7 @@ function rgt_public_config(array $c): array {
         'clip_duration_s' => $c['stimuli']['clip_duration_s'],
         'require_full_play' => (bool)$c['stimuli']['require_full_play'],
         'allow_replay' => (bool)($c['stimuli']['allow_replay'] ?? true),
+        'practice_triad' => (bool)$c['triads']['practice_triad'],
         'prompt' => $prompt,
         'labels' => ['min_words' => $c['labels']['min_words'], 'max_chars' => $c['labels']['max_chars']],
         'headphone_check' => ['enabled' => (bool)$c['headphone_check']['enabled'],

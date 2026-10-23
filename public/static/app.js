@@ -403,7 +403,7 @@ function showHeadphone(i, answers) {
 
 function showInstructions() {
   render(`<div class="panel"><h1>${tx("instr_title")}</h1><p>${tx("instr_text")}</p>
-    <p class="example">${tx("instr_example")}</p><p>${tx("instr_practice")}</p>
+    <p class="example">${tx("instr_example")}</p>${S.cfg.practice_triad ? `<p>${tx("instr_practice")}</p>` : ""}
     <div class="actions"><button class="primary" id="go">${tx("start")}</button></div></div>`);
   document.getElementById("go").onclick = () => loadNext();
 }
@@ -415,6 +415,7 @@ async function loadNext() {
   try {
     const res = await api("next", { query: { pid: S.pid } });
     if (res.done) return showEnd();
+    if (!S.cfg.practice_triad) S.practiceDone = true;   // no practice triad: no "practice finished" page
     if (!res.triad.is_practice && !S.practiceDone) {
       S.practiceDone = true;
       return showAfterPractice(res.triad);
