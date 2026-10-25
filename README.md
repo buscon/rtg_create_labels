@@ -78,7 +78,8 @@ Deployment to netcup (git clone on the server; `git pull` deploys automatically 
 1. On the server: `php ~/rtg_create_labels/private/backup.php` writes a CSV dump of all tables to `private/dumps/` in the clone.
 2. Download the dump folder (SFTP) and convert it: `python scripts/import_dump.py path/to/dump-… --out data/rgt.sqlite`
 3. `python scripts/export.py --db data/rgt.sqlite --out export/` writes analysis tables and one text file per participant with their constructs.
-4. `python scripts/simulate_stopping.py --db data/rgt.sqlite --threshold 0.80` re-runs the stopping rule with other values (design file 12).
+4. `python scripts/report.py path/to/dump-…` writes `report.html` into the dump folder: one page with participation and demographics per group, plausibility checks (real person or script?) and all answers per group. Group names come from `../invitation_links.md`. The page contains participant data: keep it private.
+5. `python scripts/simulate_stopping.py --db data/rgt.sqlite --threshold 0.80` re-runs the stopping rule with other values (design file 12).
 
 ## Known limitations
 
