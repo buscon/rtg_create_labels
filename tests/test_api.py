@@ -496,3 +496,16 @@ def test_practice_clips_do_not_take_clip_ids(server):
     practice = [int(r[0]) for r in rows if int(r[1]) == 1]
     assert clips == list(range(1, len(clips) + 1))
     assert practice and min(practice) >= 1001
+
+
+def test_report_page_needs_password(server):
+    """report.php shows only the login form without the interviewer password, the report after it."""
+    s = requests.Session()
+    r = s.get(server["base"] + "report.php", timeout=20)
+    assert r.status_code == 200 and "Interviewer password" in r.text and "const D =" not in r.text
+    r = s.post(server["base"] + "report.php", data={"password": "wrong"}, timeout=20)
+    assert "Wrong password" in r.text and "const D =" not in r.text
+    r = s.post(server["base"] + "report.php", data={"password": server["token"]}, timeout=30)
+    assert r.status_code == 200 and "const D =" in r.text and "log out" in r.text
+    r = s.get(server["base"] + "report.php?logout", timeout=20)
+    assert "const D =" not in s.get(server["base"] + "report.php", timeout=20).text

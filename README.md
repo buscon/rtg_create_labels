@@ -78,7 +78,7 @@ Deployment to netcup (git clone on the server; `git pull` deploys automatically 
 1. On the server: `php ~/rtg_create_labels/private/backup.php` writes a CSV dump of all tables to `private/dumps/` in the clone.
 2. Download the dump folder (SFTP) and convert it: `python scripts/import_dump.py path/to/dump-… --out data/rgt.sqlite`
 3. `python scripts/export.py --db data/rgt.sqlite --out export/` writes analysis tables and one text file per participant with their constructs.
-4. Analysis page, on the server: `php ~/rtg_create_labels/private/report.php` reads the live database and writes `private/dumps/report-YYYYMMDD-HHMMSS.html`: participation and demographics per group, plausibility checks (real person or script?) and all answers per group (group names = notes in `access_codes.csv`). Download it with SFTP and open it in a browser. It contains participant data: keep it private.
+4. Analysis page: open `<study URL>/report.php` (e.g. https://marcellolussana.net/rgt/report.php) and log in with the interviewer password. The page is built from the live database on every visit, so reloading shows the current state: participation and demographics per group, plausibility checks (real person or script?) and all answers per group (group names = notes in `access_codes.csv`). It shows participant data: open it only on your own devices. To save a copy instead: `php ~/rtg_create_labels/private/report.php` writes `private/dumps/report-….html`.
 5. `python scripts/simulate_stopping.py --db data/rgt.sqlite --threshold 0.80` re-runs the stopping rule with other values (design file 12).
 
 ## Known limitations
