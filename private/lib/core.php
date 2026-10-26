@@ -316,6 +316,40 @@ function rgt_access_codes(array $cfg): array {
     return $codes;
 }
 
+/**
+ * Create a new group code and append it to private/access_codes.csv. Returns the code as XXXX-XXXX.
+ * $note = group name (also the key for [group.NAME] settings), $max = maximum sessions (0 = unlimited),
+ * $until = last valid day YYYY-MM-DD or ''. Used by setup.php --add-code and the report page.
+ */
+function rgt_add_access_code(array $cfg, string $note, int $max, string $until = ''): string {
+    $note = trim((string)preg_replace('/[\x00-\x1f\x7f]+/u', ' ', $note));
+    if ($note === '' || mb_strlen($note) > 60) throw new InvalidArgumentException('the group name must have 1 to 60 characters');
+    if ($max < 0 || $max > 100000) throw new InvalidArgumentException('the maximum must be between 0 (unlimited) and 100000');
+    if ($until !== '' && (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $until) || !checkdate((int)substr($until, 5, 2), (int)substr($until, 8, 2), (int)substr($until, 0, 4))))
+        throw new InvalidArgumentException('the end date must be YYYY-MM-DD');
+    $file = rgt_path($cfg, $cfg['access']['codes_file']);
+    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I
+    $h = @fopen($file, 'c+');
+    if ($h === false) throw new RuntimeException("cannot write $file");
+    try {
+        flock($h, LOCK_EX);
+        $existing = rgt_access_codes($cfg);
+        do {
+            $code = '';
+            for ($k = 0; $k < 8; $k++) $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        } while (isset($existing[$code]));
+        fseek($h, 0, SEEK_END);
+        if (ftell($h) === 0) fputcsv($h, ['code', 'max_uses', 'valid_until', 'note'], ',', '"', '');
+        fputcsv($h, [$code, $max, $until, $note], ',', '"', '');
+        fflush($h);
+        flock($h, LOCK_UN);
+    } finally {
+        fclose($h);
+    }
+    @chmod($file, 0600);
+    return substr($code, 0, 4) . '-' . substr($code, 4);
+}
+
 /** 'ok' | 'missing' | 'invalid' | 'expired' | 'used_up' */
 function rgt_code_status(PDO $pdo, array $cfg, string $code): string {
     if (!$cfg['access']['require_code']) return 'ok';

@@ -509,3 +509,24 @@ def test_report_page_needs_password(server):
     assert r.status_code == 200 and "const D =" in r.text and "log out" in r.text
     r = s.get(server["base"] + "report.php?logout", timeout=20)
     assert "const D =" not in s.get(server["base"] + "report.php", timeout=20).text
+
+
+def test_report_page_adds_group(server):
+    """Logged in, the report page creates a group code; without login or form token it does not."""
+    codes = server["root"] / "private" / "access_codes.csv"
+    before = codes.read_text(encoding="utf-8")
+    s = requests.Session()
+    s.post(server["base"] + "report.php", data={"action": "add_group", "name": "Nope", "max": "5"}, timeout=20)
+    assert "Nope" not in codes.read_text(encoding="utf-8")
+    page = s.post(server["base"] + "report.php", data={"password": server["token"]}, timeout=30).text
+    csrf = re.search(r'name="csrf" value="([0-9a-f]+)"', page).group(1)
+    s.post(server["base"] + "report.php", data={"action": "add_group", "csrf": "x", "name": "Nope", "max": "5"}, timeout=20)
+    assert "Nope" not in codes.read_text(encoding="utf-8")
+    r = s.post(server["base"] + "report.php", data={"action": "add_group", "csrf": csrf, "name": "Seminar, WS",
+                                                    "max": "7", "until": "2030-01-31"}, timeout=30)
+    code = re.search(r"code ([A-Z0-9]{4}-[A-Z0-9]{4})", r.text).group(1)
+    assert call(server, "access", c=code)[1]["status"] == "ok"
+    try:
+        assert codes.read_text(encoding="utf-8").strip().endswith(f'{code.replace("-", "")},7,2030-01-31,"Seminar, WS"')
+    finally:
+        codes.write_text(before, encoding="utf-8")

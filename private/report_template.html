@@ -29,6 +29,13 @@ tr.flagged td{background:var(--warn-soft)}
 .heat td{text-align:center;min-width:42px;font-variant-numeric:tabular-nums}.heat th{font-size:11px}
 details summary{cursor:pointer;color:var(--accent)}.small{font-size:12px}
 .pole{font-weight:600}.sep{color:var(--muted);padding:0 4px}
+button.copy{font:inherit;font-size:11px;margin-left:6px;padding:1px 6px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--muted);cursor:pointer}
+#t-codes a{color:var(--accent)}
+.addgroup{display:flex;gap:10px;flex-wrap:wrap;align-items:end;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.addgroup label{display:grid;gap:3px;font-size:12px;color:var(--muted)}
+.addgroup input{font:inherit;padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.addgroup button{font:inherit;padding:6px 12px;border:0;border-radius:6px;background:var(--accent);color:var(--panel);cursor:pointer}
+.notice{padding:8px 12px;border-radius:8px;margin:0 0 10px;background:var(--accent-soft)}.notice.err{background:var(--warn-soft);color:var(--warn)}
 </style></head><body>
 <header><h1>Repertory grid study – analysis</h1>
 <div class="muted">Data: <b id="dump"></b> · report made <span id="made"></span> · contains participant data: keep private.</div></header>
@@ -42,6 +49,12 @@ details summary{cursor:pointer;color:var(--accent)}.small{font-size:12px}
 <h2 id="s1">1 Participation</h2>
 <p class="muted small">A session starts after consent, the demographic questions and the listening-situation page.
 Opening the link without getting that far is not recorded. “Finished” = ended by the stopping rule, the maximum number of comparisons or the time limit.</p>
+<h3>Groups and invitation links</h3>
+<div class="panel"><table id="t-codes"></table>
+<p class="muted small" style="margin:8px 0 0">From <code>private/access_codes.csv</code> on the server. Add <code>&amp;lang=en</code> or <code>&amp;lang=de</code> to a link to set the start language.
+“sessions” counts every started session with the code (also unfinished ones); it is what the maximum refers to.</p>
+<!--ADMIN--></div>
+<h3>Overview</h3>
 <div class="kpis" id="kpis"></div>
 <div class="panel"><table id="t-groups"></table></div>
 <h3>Demographics and listening situation</h3>
@@ -192,6 +205,15 @@ function render() {
       <details><summary>All ${gr.length} answers</summary>${table}</details></div>`;
   }).join("");
 }
+$("#t-codes").innerHTML = `<tr><th>Group</th><th>Code</th><th>Invitation link</th><th class="num">sessions</th><th class="num">finished</th>
+  <th class="num">max.</th><th>valid until</th><th>status</th></tr>` + (D.codes || []).map((c) => `<tr><td><b>${esc(c.group)}</b></td>
+  <td><code>${esc(c.code)}</code></td><td><a href="${esc(c.link)}" target="_blank" rel="noopener">${esc(c.link)}</a>
+  <button class="copy" data-link="${esc(c.link)}" title="copy link">copy</button></td>
+  <td class="num">${c.used}</td><td class="num">${c.finished}</td><td class="num">${c.max || "unlimited"}</td><td>${esc(c.until || "–")}</td>
+  <td>${c.status === "active" ? '<span class="ok">active</span>' : `<span class="flag" style="display:inline">${esc(c.status)}</span>`}</td></tr>`).join("");
+document.querySelectorAll("button.copy").forEach((b) => b.addEventListener("click", () => {
+  try { navigator.clipboard.writeText(b.dataset.link).then(() => { b.textContent = "copied"; setTimeout(() => (b.textContent = "copy"), 1500); }); } catch (e) {}
+}));
 for (const id of ["#f-test", "#f-flag", "#f-unf"]) $(id).addEventListener("change", render);
 render();
 </script></body></html>

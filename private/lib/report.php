@@ -203,7 +203,21 @@ function rgt_report_html(array $cfg, PDO $pdo): string {
 
     // ------------------------------------------------------------------ page
 
-    $data = ['people' => $people, 'rows' => $answerRows, 'clips' => (object)array_combine(array_map('strval', array_keys($clips)), $clips),
+    // group codes and invitation links (private/access_codes.csv)
+    $site = rtrim((string)($cfg['access']['site_url'] ?? ''), '/');
+    $codeList = [];
+    foreach (rgt_access_codes($cfg) as $code => $r) {
+        $pretty = strlen($code) === 8 ? substr($code, 0, 4) . '-' . substr($code, 4) : $code;
+        $used = count(array_filter($people, fn($p) => $p['code'] === $code));
+        $max = (int)($r['max_uses'] ?? 0);
+        $until = trim((string)($r['valid_until'] ?? ''));
+        $status = ($until !== '' && gmdate('Y-m-d') > $until) ? 'expired' : (($max > 0 && $used >= $max) ? 'used up' : 'active');
+        $codeList[] = ['group' => $groups[$code], 'code' => $pretty, 'link' => ($site !== '' ? $site : '<study URL>') . '/?c=' . $pretty,
+                       'max' => $max, 'until' => $until, 'used' => $used,
+                       'finished' => count(array_filter($people, fn($p) => $p['code'] === $code && $p['finished'] !== null)),
+                       'status' => $status];
+    }
+    $data = ['codes' => $codeList, 'people' => $people, 'rows' => $answerRows, 'clips' => (object)array_combine(array_map('strval', array_keys($clips)), $clips),
              'dump' => 'database, ' . gmdate('Y-m-d H:i') . ' UTC', 'made' => gmdate('Y-m-d H:i') . ' UTC'];
     $json = json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_INVALID_UTF8_SUBSTITUTE);
     $page = str_replace('__DATA__', $json, file_get_contents(dirname(__DIR__) . '/report_template.html'));

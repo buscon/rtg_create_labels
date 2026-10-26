@@ -160,18 +160,12 @@ if ($i !== false) {
         line('FAIL', 'usage: --add-code "NOTE" MAX_USES [VALID_UNTIL as YYYY-MM-DD]   (MAX_USES 0 = unlimited)');
         exit(1);
     }
-    $alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';           // no 0/O, 1/I
-    do {
-        $code = '';
-        for ($k = 0; $k < 8; $k++) $code .= $alphabet[random_int(0, strlen($alphabet) - 1)];
-    } while (isset(rgt_access_codes($cfg)[$code]));
-    $new = !is_file($codesFile);
-    $h = fopen($codesFile, 'a');
-    if ($new) fputcsv($h, ['code', 'max_uses', 'valid_until', 'note'], ',', '"', '');
-    fputcsv($h, [$code, $max, $until, $note], ',', '"', '');
-    fclose($h);
-    @chmod($codesFile, 0600);
-    $pretty = substr($code, 0, 4) . '-' . substr($code, 4);
+    try {
+        $pretty = rgt_add_access_code($cfg, $note, $max, $until);
+    } catch (InvalidArgumentException $e) {
+        line('FAIL', $e->getMessage());
+        exit(1);
+    }
     line('ok', "new code $pretty for \"$note\" (" . ($max > 0 ? "max. $max sessions" : 'unlimited sessions')
         . ($until ? ", until $until" : '') . ')');
     $site = $cfg['access']['site_url'] ?: 'https://<your site>/rgt/';
