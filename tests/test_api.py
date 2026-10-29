@@ -204,6 +204,7 @@ def test_label_validation(server):
     assert call(server, "response", "POST", {**base, "pair": ["A", "A"], "similarity_pole": "x", "contrast_pole": "y"})[0] == 400
     assert call(server, "response", "POST", {**base, "pair": ["A", "B"], "similarity_pole": "", "contrast_pole": "y"})[0] == 400
     assert call(server, "response", "POST", {**base, "pair": ["A", "B"], "similarity_pole": "x" * 81, "contrast_pole": "y"})[0] == 400
+    assert call(server, "response", "POST", {**base, "pair": ["A", "B"], "similarity_pole": "x" * 61, "contrast_pole": "y"})[0] == 400
     assert call(server, "response", "POST", {**base, "pair": ["A", "B"], "similarity_pole": "x", "contrast_pole": "y"})[0] == 200
     # same triad again is refused
     assert call(server, "response", "POST", {**base, "pair": ["A", "B"], "similarity_pole": "x", "contrast_pole": "y"})[0] == 409

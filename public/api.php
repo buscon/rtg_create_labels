@@ -334,7 +334,8 @@ case 'POST response':
             $cPole = trim((string)($b['contrast_pole'] ?? ''));
             foreach ([$sPole, $cPole] as $pole) {
                 $words = preg_split('/\s+/u', $pole, -1, PREG_SPLIT_NO_EMPTY);
-                if (count($words) < $lab['min_words'] || mb_strlen($pole) > $lab['max_chars'])
+                if (count($words) < $lab['min_words'] || mb_strlen($pole) > $lab['max_chars']
+                    || ($lab['max_words'] > 0 && count($words) > $lab['max_words']))
                     throw new DomainException('400|label length out of range');
             }
             $pairIds = [$t[POS[$pair[0]]], $t[POS[$pair[1]]]];

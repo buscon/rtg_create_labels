@@ -452,9 +452,9 @@ function showTriad(triad) {
     <div class="panel" id="form" hidden>
       <div class="labels">
         <label class="block" for="sim" id="sim-label"></label>
-        <input type="text" id="sim" maxlength="${L.max_chars}" autocomplete="off">
+        <input type="text" id="sim" maxlength="${L.max_chars}" autocomplete="off" placeholder="${esc(tx("label_placeholder"))}">
         <label class="block" for="con" id="con-label"></label>
-        <input type="text" id="con" maxlength="${L.max_chars}" autocomplete="off">
+        <input type="text" id="con" maxlength="${L.max_chars}" autocomplete="off" placeholder="${esc(tx("label_placeholder"))}">
       </div>
       ${S.cfg.interface.thinking_prompts ? `<div class="ideas">
         <button type="button" class="linkbtn" id="idea">${tx("need_idea")}</button>
@@ -583,6 +583,10 @@ function showTriad(triad) {
     const words = (s) => s.split(/\s+/).filter(Boolean).length;
     if (words(sim) < L.min_words || words(con) < L.min_words) {
       const m = document.getElementById("msg"); setText(m, "too_short"); m.hidden = false;
+      return;
+    }
+    if (L.max_words && (words(sim) > L.max_words || words(con) > L.max_words)) {
+      const m = document.getElementById("msg"); setText(m, "too_long"); m.hidden = false;
       return;
     }
     let embedding = null;

@@ -84,7 +84,7 @@ export const TEXT = {
     hp_fail_text: "Leider konnten wir nicht sicherstellen, dass Kopfhörer verwendet werden. Für diese Studie sind Kopfhörer notwendig, daher endet die Teilnahme hier. Vielen Dank für Ihr Interesse.",
 
     instr_title: "Ihre Aufgabe",
-    instr_text: "Sie hören jeweils drei kurze Aufnahmen (A, B, C). Jede gibt die Klangumgebung eines Ortes wieder. Hören Sie alle drei vollständig an. Wählen Sie dann die zwei Aufnahmen aus, die sich am meisten ähneln. Beschreiben Sie anschließend in wenigen Worten, was die zwei gemeinsam haben und worin sich die dritte von ihnen unterscheidet. Es gibt keine richtigen oder falschen Antworten. Wenn Ihnen kein neuer Unterschied einfällt, können Sie das angeben.",
+    instr_text: "Sie hören jeweils drei kurze Aufnahmen (A, B, C). Jede gibt die Klangumgebung eines Ortes wieder. Hören Sie alle drei vollständig an. Wählen Sie dann die zwei Aufnahmen aus, die sich am meisten ähneln. Beschreiben Sie anschließend möglichst kurz, was die zwei gemeinsam haben und worin sich die dritte von ihnen unterscheidet. Kurze Stichwörter (z. B. ein bis drei Wörter) genügen, ganze Sätze sind nicht nötig. Es gibt keine richtigen oder falschen Antworten. Wenn Ihnen kein neuer Unterschied einfällt, können Sie das angeben.",
     instr_example: "Beispiel mit Orten: Ein Park und ein Wald sind beide „grün“, ein Parkplatz dagegen „grau und versiegelt“.",
     instr_practice: "Zuerst folgt ein Übungsdurchgang.",
 
@@ -116,6 +116,8 @@ export const TEXT = {
     submit: "Antwort speichern",
     no_difference: "Mir fällt kein neuer Unterschied ein",
     too_short: "Bitte geben Sie für beide Seiten eine kurze Beschreibung ein.",
+    too_long: "Bitte kürzer: ein bis drei Wörter pro Feld genügen.",
+    label_placeholder: "kurz, z. B. 1–3 Wörter",
 
     after_practice_title: "Übung beendet",
     after_practice_text: "Jetzt beginnt die eigentliche Aufgabe. Sie funktioniert genauso.",
@@ -220,7 +222,7 @@ export const TEXT = {
     hp_fail_text: "Unfortunately we could not confirm that headphones are being used. Headphones are required for this study, so participation ends here. Thank you for your interest.",
 
     instr_title: "Your task",
-    instr_text: "Each time you will hear three short recordings (A, B, C). Each one presents the soundscape of a place. Listen to all three completely. Then choose the two recordings that are most alike. Then describe in a few words what the two have in common and how the third one differs from them. There are no right or wrong answers. If you cannot think of a new difference, you can say so.",
+    instr_text: "Each time you will hear three short recordings (A, B, C). Each one presents the soundscape of a place. Listen to all three completely. Then choose the two recordings that are most alike. Then describe as briefly as possible what the two have in common and how the third one differs from them. Short keywords (e.g. one to three words) are enough; full sentences are not needed. There are no right or wrong answers. If you cannot think of a new difference, you can say so.",
     instr_example: "Example with places: a park and a forest are both “green”, while a car park is “grey and paved”.",
     instr_practice: "First there is a practice round.",
 
@@ -252,6 +254,8 @@ export const TEXT = {
     submit: "Save answer",
     no_difference: "I cannot think of a new difference",
     too_short: "Please enter a short description for both sides.",
+    too_long: "Please shorten: one to three words per field are enough.",
+    label_placeholder: "short, e.g. 1–3 words",
 
     after_practice_title: "Practice finished",
     after_practice_text: "Now the actual task begins. It works in the same way.",

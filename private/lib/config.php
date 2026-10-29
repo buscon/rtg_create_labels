@@ -37,6 +37,7 @@ function rgt_load_config(string $privateDir, bool $checkFiles = true): array {
         'max_sessions_per_ip_hour' => 0, 'min_play_fraction' => 0.0, 'site_url' => ''];
     $raw['interface'] = ($raw['interface'] ?? []) + ['pause_when_hidden' => false, 'pause_on_blur' => false,
         'no_difference_delay_s' => 0, 'thinking_prompts' => false, 'demographics' => false];
+    $raw['labels'] = ($raw['labels'] ?? []) + ['max_words' => 0];
     $raw['_private_dir'] = $privateDir;
     rgt_validate_config($raw, $checkFiles);
     return $raw;
@@ -114,6 +115,8 @@ function rgt_validate_config(array $c, bool $checkFiles): void {
     if ($st['consecutive_not_new'] < 1) $e[] = 'consecutive_not_new must be at least 1';
     if ($st['time_limit_min'] <= 0) $e[] = 'time_limit_min must be positive';
     if ($c['labels']['max_chars'] < 5) $e[] = 'max_chars is too small';
+    if (!is_int($c['labels']['max_words']) || ($c['labels']['max_words'] !== 0 && $c['labels']['max_words'] < $c['labels']['min_words']))
+        $e[] = '[labels] max_words must be 0 (no limit) or at least min_words';
     $hp = $c['headphone_check'];
     if ($hp['enabled'] && ($hp['pass_min_correct'] < 1 || $hp['pass_min_correct'] > $hp['n_trials']))
         $e[] = 'pass_min_correct must be between 1 and n_trials';
@@ -168,7 +171,8 @@ function rgt_public_config(array $c): array {
         'allow_replay' => (bool)($c['stimuli']['allow_replay'] ?? true),
         'practice_triad' => (bool)$c['triads']['practice_triad'],
         'prompt' => $prompt,
-        'labels' => ['min_words' => $c['labels']['min_words'], 'max_chars' => $c['labels']['max_chars']],
+        'labels' => ['min_words' => $c['labels']['min_words'], 'max_words' => (int)$c['labels']['max_words'],
+                     'max_chars' => $c['labels']['max_chars']],
         'headphone_check' => ['enabled' => (bool)$c['headphone_check']['enabled'],
                               'n_trials' => $c['headphone_check']['n_trials']],
         'block_mobile' => (bool)$c['device']['block_mobile'],
