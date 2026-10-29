@@ -45,6 +45,7 @@ function relabel() {
   const prog = document.getElementById("progress");
   if (prog.dataset.i18n) prog.textContent = t(prog.dataset.i18n, JSON.parse(prog.dataset.vars || "{}"));
   app.querySelectorAll("[data-prompt]").forEach((el) => { el.textContent = S.cfg.prompt[S.lang]; });
+  app.querySelectorAll("[data-i18n-ph]").forEach((el) => { el.placeholder = t(el.dataset.i18nPh); });
   const ivq = document.getElementById("iv-questions");
   if (ivq) ivq.innerHTML = (S.cfg.followup_questions[S.lang] || []).map((q) => `<li>${esc(q)}</li>`).join("");
 }
@@ -452,9 +453,9 @@ function showTriad(triad) {
     <div class="panel" id="form" hidden>
       <div class="labels">
         <label class="block" for="sim" id="sim-label"></label>
-        <input type="text" id="sim" maxlength="${L.max_chars}" autocomplete="off" placeholder="${esc(tx("label_placeholder"))}">
+        <input type="text" id="sim" maxlength="${L.max_chars}" autocomplete="off" data-i18n-ph="label_placeholder" placeholder="${esc(t("label_placeholder"))}">
         <label class="block" for="con" id="con-label"></label>
-        <input type="text" id="con" maxlength="${L.max_chars}" autocomplete="off" placeholder="${esc(tx("label_placeholder"))}">
+        <input type="text" id="con" maxlength="${L.max_chars}" autocomplete="off" data-i18n-ph="label_placeholder" placeholder="${esc(t("label_placeholder"))}">
       </div>
       ${S.cfg.interface.thinking_prompts ? `<div class="ideas">
         <button type="button" class="linkbtn" id="idea">${tx("need_idea")}</button>
